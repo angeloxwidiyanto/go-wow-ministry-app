@@ -1,0 +1,41 @@
+# Caddyfile — WoW Ministry App
+# Replace "your-domain.com" with your actual domain before deploying.
+# Caddy automatically provisions and renews SSL/TLS certificates via Let's Encrypt.
+
+your-domain.com {
+    # Route all /api/* requests to the Go backend
+    handle /api/* {
+        reverse_proxy backend:8080
+    }
+
+    # Route everything else to the Next.js frontend
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-XSS-Protection "1; mode=block"
+        -Server
+    }
+
+    encode gzip
+    log {
+        output file /var/log/caddy/access.log
+    }
+}
+
+# Local development override (HTTP only — no SSL needed)
+# Uncomment this block and comment out the one above when running locally:
+#
+# :8000 {
+#     handle /api/* {
+#         reverse_proxy backend:8080
+#     }
+#     handle {
+#         reverse_proxy frontend:3000
+#     }
+# }

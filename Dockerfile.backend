@@ -1,0 +1,37 @@
+# ── Stage 1: Build the Go binary ──────────────────────────────────────────
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates
+
+# Cache Go module downloads
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source and build
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /go-api ./cmd/server
+
+# ── Stage 2: Minimal runtime image ────────────────────────────────────────
+FROM alpine:3.19
+
+# Install timezone data and CA certs (needed for HTTPS calls to Fonnte)
+RUN apk add --no-cache tzdata ca-certificates
+
+WORKDIR /app
+
+# Copy the compiled binary only
+COPY --from=builder /go-api /app/go-api
+
+# Non-root user for security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+  CMD wget -qO- http://localhost:8080/health || exit 1
+
+CMD ["/app/go-api"]
