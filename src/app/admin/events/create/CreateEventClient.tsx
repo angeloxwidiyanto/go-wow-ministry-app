@@ -95,6 +95,21 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
     });
   };
 
+  // Helper to format ISO strings from DB into datetime-local format in WIB (UTC+7)
+  const formatWIBDatetimeLocal = (isoString: string | null) => {
+    if (!isoString) return "";
+    // If it's already just a local string from input (YYYY-MM-DDThh:mm), return as is
+    if (!isoString.endsWith("Z") && isoString.length <= 16) return isoString;
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return "";
+      d.setUTCHours(d.getUTCHours() + 7);
+      return d.toISOString().slice(0, 16);
+    } catch {
+      return "";
+    }
+  };
+
   return (
     <div className="max-w-3xl pb-20">
       <header className="mb-10">
@@ -346,7 +361,7 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
                       <div>
                         <label className="block text-xs font-semibold text-zinc-600 mb-1">Start Date</label>
                         <input 
-                          value={tier.start_date || ''}
+                          value={formatWIBDatetimeLocal(tier.start_date)}
                           onChange={e => updateTicketTier(tier.id, 'start_date', e.target.value || null)}
                           type="datetime-local" 
                           className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -355,7 +370,7 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
                       <div>
                         <label className="block text-xs font-semibold text-zinc-600 mb-1">End Date</label>
                         <input 
-                          value={tier.end_date || ''}
+                          value={formatWIBDatetimeLocal(tier.end_date)}
                           onChange={e => updateTicketTier(tier.id, 'end_date', e.target.value || null)}
                           type="datetime-local" 
                           className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"

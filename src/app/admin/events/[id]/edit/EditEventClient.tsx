@@ -89,8 +89,22 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
     });
   };
 
-  // Convert DB date format to datetime-local expected format (YYYY-MM-DDThh:mm)
-  const defaultDate = event.event_date ? new Date(event.event_date).toISOString().slice(0, 16) : "";
+  // Helper to format ISO strings from DB into datetime-local format in WIB (UTC+7)
+  const formatWIBDatetimeLocal = (isoString: string | null) => {
+    if (!isoString) return "";
+    // If it's already just a local string from input (YYYY-MM-DDThh:mm), return as is
+    if (!isoString.endsWith("Z") && isoString.length <= 16) return isoString;
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return "";
+      d.setUTCHours(d.getUTCHours() + 7);
+      return d.toISOString().slice(0, 16);
+    } catch {
+      return "";
+    }
+  };
+
+  const defaultDate = formatWIBDatetimeLocal(event.event_date);
 
   return (
     <div className="max-w-3xl pb-20">
@@ -342,7 +356,7 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
                       <div>
                         <label className="block text-xs font-semibold text-zinc-600 mb-1">Start Date</label>
                         <input 
-                          value={tier.start_date ? new Date(tier.start_date).toISOString().slice(0, 16) : ''}
+                          value={formatWIBDatetimeLocal(tier.start_date)}
                           onChange={e => updateTicketTier(tier.id, 'start_date', e.target.value || null)}
                           type="datetime-local" 
                           className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -351,7 +365,7 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
                       <div>
                         <label className="block text-xs font-semibold text-zinc-600 mb-1">End Date</label>
                         <input 
-                          value={tier.end_date ? new Date(tier.end_date).toISOString().slice(0, 16) : ''}
+                          value={formatWIBDatetimeLocal(tier.end_date)}
                           onChange={e => updateTicketTier(tier.id, 'end_date', e.target.value || null)}
                           type="datetime-local" 
                           className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"

@@ -6,23 +6,20 @@ import { updateOrderStatusAction, bulkUpdateOrderStatusAction } from "./actions"
 
 type Attendee = {
   id: string;
+  order_id: string;
   registration_number: string;
   attendee_name: string;
-  attendee_whatsapp: string | null;
   attendee_email: string | null;
+  attendee_whatsapp: string | null;
   church_title: string | null;
-  gender: string | null;
-  birth_date: string | null;
-  origin_church: string | null;
   ministry_role: string | null;
   registration_type: string;
   created_at: string;
-  registration_orders: {
-    id: string;
-    event_id: string;
-    status: string;
-    pic_name: string;
-  };
+  attended_at: string | null;
+  status: string;
+  event_id: string;
+  pic_name: string | null;
+  ticket_tier_name: string | null;
 };
 
 export default function EventAttendeesClient({ eventTitle, attendees }: { eventTitle: string, attendees: Attendee[] }) {
@@ -35,7 +32,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
     (a.attendee_email && a.attendee_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (a.attendee_whatsapp && a.attendee_whatsapp.includes(searchQuery)) ||
     a.registration_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.registration_orders.pic_name.toLowerCase().includes(searchQuery.toLowerCase())
+    (a.pic_name || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,7 +56,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
   // Helper to extract unique order IDs from selected attendees
   const getSelectedOrderIdsAndEventId = () => {
     const selectedAttendees = attendees.filter(a => selectedAttendeeIds.has(a.id));
-    const orderIds = Array.from(new Set(selectedAttendees.map(a => a.registration_orders.id)));
+    const orderIds = Array.from(new Set(selectedAttendees.map(a => a.order_id)));
     const eventId = selectedAttendees.length > 0 ? selectedAttendees[0].registration_orders.event_id : "";
     return { orderIds, eventId };
   };
@@ -109,8 +106,8 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
       a.origin_church || "",
       a.ministry_role || "",
       a.registration_type || "",
-      a.registration_orders.pic_name,
-      a.registration_orders.status,
+      (a.pic_name || ""),
+      a.status,
       new Date(a.created_at).toLocaleDateString("id-ID")
     ]);
 
@@ -216,7 +213,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {filteredAttendees.map((a) => {
-                const status = a.registration_orders.status;
+                const status = a.status;
                 return (
                   <tr key={a.id} className="hover:bg-zinc-50/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -237,7 +234,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <p className="text-sm font-mono text-zinc-900 font-medium">{a.registration_number}</p>
-                      <p className="text-xs text-zinc-500">PIC: {a.registration_orders.pic_name}</p>
+                      <p className="text-xs text-zinc-500">PIC: {(a.pic_name || "")}</p>
                     </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-3">
@@ -267,7 +264,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
                           </button>
                           <div className="absolute right-0 top-full w-40 bg-white border border-zinc-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 flex flex-col py-1">
                             <button 
-                              onClick={() => window.open(`/invoice/${a.registration_orders.id}`, '_blank')}
+                              onClick={() => window.open(`/invoice/${a.order_id}`, '_blank')}
                               className="px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50 font-medium"
                             >
                               {status === "PAID" ? "View E-Ticket" : "View Invoice"}
@@ -275,7 +272,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
                             <div className="h-px bg-zinc-100 my-1"></div>
                             {status !== "PAID" && (
                               <button 
-                                onClick={() => handleUpdateStatus(a.registration_orders.id, "PAID", a.registration_orders.event_id)}
+                                onClick={() => handleUpdateStatus(a.order_id, "PAID", a.event_id)}
                                 className="px-4 py-2 text-left text-sm text-emerald-600 hover:bg-emerald-50 font-medium"
                               >
                                 Mark as Paid
@@ -283,7 +280,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
                             )}
                             {status !== "PENDING" && (
                               <button 
-                                onClick={() => handleUpdateStatus(a.registration_orders.id, "PENDING", a.registration_orders.event_id)}
+                                onClick={() => handleUpdateStatus(a.order_id, "PENDING", a.event_id)}
                                 className="px-4 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50 font-medium"
                               >
                                 Mark as Pending
@@ -291,7 +288,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
                             )}
                             {status !== "CANCELLED" && (
                               <button 
-                                onClick={() => handleUpdateStatus(a.registration_orders.id, "CANCELLED", a.registration_orders.event_id)}
+                                onClick={() => handleUpdateStatus(a.order_id, "CANCELLED", a.event_id)}
                                 className="px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 font-medium"
                               >
                                 Cancel Order

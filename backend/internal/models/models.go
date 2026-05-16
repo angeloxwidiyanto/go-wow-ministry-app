@@ -132,6 +132,11 @@ type EventAttendee struct {
 	MinistryRole       *string    `json:"ministry_role"`
 	AttendedAt         *time.Time `json:"attended_at"`
 	CreatedAt          time.Time  `json:"created_at"`
+	// Joined
+	Status         string  `json:"status,omitempty"`
+	EventID        string  `json:"event_id,omitempty"`
+	PicName        *string `json:"pic_name,omitempty"`
+	TicketTierName *string `json:"ticket_tier_name,omitempty"`
 }
 
 // AppSetting maps to the `app_settings` table (key-value store).

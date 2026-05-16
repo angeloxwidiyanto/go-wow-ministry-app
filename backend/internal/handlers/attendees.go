@@ -28,9 +28,14 @@ func ListAttendees(w http.ResponseWriter, r *http.Request) {
 		       a.registration_number, a.registration_type,
 		       a.attendee_name, a.attendee_email, a.attendee_whatsapp,
 		       a.church_title, a.gender, a.birth_date::TEXT,
-		       a.origin_church, a.ministry_role, a.attended_at, a.created_at
+		       a.origin_church, a.ministry_role, a.attended_at, a.created_at,
+		       COALESCE(o.status, 'PENDING') AS status, 
+		       COALESCE(o.event_id, $1::uuid) AS event_id, 
+		       o.pic_name, 
+		       t.name AS ticket_tier_name
 		FROM event_attendees a
 		LEFT JOIN registration_orders o ON o.id = a.order_id
+		LEFT JOIN ticket_tiers t ON t.id = a.ticket_tier_id
 		WHERE ($1::uuid IS NULL OR o.event_id = $1::uuid)
 		  AND ($2::uuid IS NULL OR a.order_id = $2::uuid)
 		ORDER BY a.created_at DESC
@@ -50,6 +55,7 @@ func ListAttendees(w http.ResponseWriter, r *http.Request) {
 			&a.AttendeeName, &a.AttendeeEmail, &a.AttendeeWhatsapp,
 			&a.ChurchTitle, &a.Gender, &a.BirthDate,
 			&a.OriginChurch, &a.MinistryRole, &a.AttendedAt, &a.CreatedAt,
+			&a.Status, &a.EventID, &a.PicName, &a.TicketTierName,
 		); err != nil {
 			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
