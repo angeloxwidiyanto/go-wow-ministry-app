@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import InvoiceClient from "./InvoiceClient";
 import PaymentProofUpload from "./PaymentProofUpload";
@@ -57,7 +58,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ orderI
 
   return (
     <div className="min-h-screen bg-zinc-100 flex flex-col items-center p-4 sm:p-10 font-body">
-      <InvoiceClient order={order} />
+      <Suspense fallback={<div className="p-10 text-center text-zinc-500 animate-pulse font-semibold">Loading invoice details...</div>}>
+        <InvoiceClient order={order} />
+      </Suspense>
       {isPending && (
         <div className="w-full max-w-2xl mt-4">
           <PaymentProofUpload

@@ -12,6 +12,8 @@ type Attendee = {
   attendee_name: string;
   attendee_email: string | null;
   attendee_whatsapp: string | null;
+  gender: string | null;
+  origin_church: string | null;
   church_title: string | null;
   ministry_role: string | null;
   registration_type: string;

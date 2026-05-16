@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import QRCode from "react-qr-code";
 
 type Order = {
@@ -34,8 +35,17 @@ type Order = {
 };
 
 export default function InvoiceClient({ order }: { order: Order }) {
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+  
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    setMounted(true);
+    const interval = setInterval(() => setNow(new Date()), 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -46,6 +56,10 @@ export default function InvoiceClient({ order }: { order: Order }) {
   const isPending = order.status === "PENDING";
   const subtotal = Number(order.total_amount) + Number(order.discount_amount);
   const ticketPrice = order.total_tickets > 0 ? subtotal / order.total_tickets : 0;
+
+  const eventDate = new Date(order.events.event_date);
+  const diffInMinutes = (eventDate.getTime() - now.getTime()) / (1000 * 60);
+  const isTooEarly = diffInMinutes > 30;
 
   if (!mounted) return null;
 
@@ -96,6 +110,16 @@ export default function InvoiceClient({ order }: { order: Order }) {
           Download PDF / Print
         </button>
       </div>
+
+      {errorParam === "too_early" && (
+        <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 px-6 py-4 rounded-2xl mb-6 flex items-start gap-3 shadow-sm print:hidden">
+          <span className="material-symbols-outlined text-amber-500 shrink-0">hourglass_empty</span>
+          <div>
+            <h3 className="font-bold text-sm">Virtual Room is not yet open!</h3>
+            <p className="text-sm mt-1">You can only check-in and join the virtual event <strong>30 minutes</strong> before the scheduled start time. Please come back later.</p>
+          </div>
+        </div>
+      )}
 
       {/* Printable Invoice Container */}
       <div className="bg-white rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none w-full max-w-3xl">
