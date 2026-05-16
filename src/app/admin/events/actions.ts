@@ -86,6 +86,21 @@ export async function toggleEventPublishAction(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Converts any date string (datetime-local "YYYY-MM-DDTHH:mm" or already-ISO)
+ * into a full RFC 3339 string the Go backend can parse.  Returns null when empty.
+ */
+function toRFC3339(value?: string | null): string | null {
+  if (!value) return null;
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString(); // e.g. "2026-05-16T07:30:00.000Z"
+  } catch {
+    return null;
+  }
+}
+
 function buildEventPayload(formData: FormData): Record<string, unknown> {
   const parseJSON = (key: string, fallback: unknown = []) => {
     try {
@@ -95,11 +110,22 @@ function buildEventPayload(formData: FormData): Record<string, unknown> {
     }
   };
 
+  // Convert tier dates to RFC3339 so the Go backend can parse them
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawTiers: any[] = parseJSON("ticket_tiers", []);
+  const tiers = rawTiers.map((tier) => ({
+    ...tier,
+    start_date: toRFC3339(tier.start_date),
+    end_date: toRFC3339(tier.end_date),
+  }));
+
   return {
     title: formData.get("title")?.toString(),
     description: formData.get("description")?.toString() || null,
     slug: formData.get("slug")?.toString(),
-    event_date: formData.get("event_date")?.toString(),
+    // Convert datetime-local → RFC3339 for the required event_date field
+    event_date: toRFC3339(formData.get("event_date")?.toString()) ?? formData.get("event_date")?.toString(),
+    event_end_date: toRFC3339(formData.get("event_end_date")?.toString()),
     location: formData.get("location")?.toString() || null,
     meeting_url: formData.get("meeting_url")?.toString() || null,
     is_published: formData.get("is_published") === "on",
@@ -109,7 +135,7 @@ function buildEventPayload(formData: FormData): Record<string, unknown> {
     cover_image_url: formData.get("cover_image_url")?.toString() || null,
     content_blocks: parseJSON("content_blocks", []),
     vouchers: parseJSON("vouchers", []),
-    ticket_tiers: parseJSON("ticket_tiers", []),
+    ticket_tiers: tiers,
   };
 }
 

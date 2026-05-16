@@ -1,6 +1,6 @@
 "use server";
 
-import { apiFetch } from "@/utils/apiFetch";
+import { apiFetch } from "@/utils/api";
 
 export async function lookupTicketAction(query: string) {
   const q = query.trim();

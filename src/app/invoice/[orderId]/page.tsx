@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import InvoiceClient from "./InvoiceClient";
 import PaymentProofUpload from "./PaymentProofUpload";
-import { apiFetch } from "@/utils/apiFetch";
+import { apiFetch } from "@/utils/api";
 
 export const revalidate = 0;
 

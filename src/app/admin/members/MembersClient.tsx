@@ -730,8 +730,8 @@ function MemberProfileModal({ member, onClose }: { member: Member, onClose: () =
             
             {0 > 0 ? (
               <div className="space-y-3">
-                {([].map)((at, idx) => {
-                  const event = at.registration_orders.events;
+                {([] as any[]).map((at, idx) => {
+                  const event = at.registration_orders?.events;
                   return (
                     <div key={idx} className="flex items-center justify-between p-4 bg-zinc-50 border border-zinc-100 rounded-2xl hover:bg-zinc-100/50 transition-colors">
                       <div className="flex items-center gap-4">

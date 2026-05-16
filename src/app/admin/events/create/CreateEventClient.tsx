@@ -89,8 +89,8 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
     
     startTransition(async () => {
       const result = await createEventAction(formData);
-      if (result?.error) {
-        setErrorMsg(result.error);
+      if (result && !result.success) {
+        setErrorMsg(result.message || "Create failed. Please try again.");
       }
     });
   };

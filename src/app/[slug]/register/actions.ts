@@ -27,7 +27,7 @@ export async function submitRegistrationAction(
   };
 
   try {
-    const res = await apiFetch("/api/events/register", {
+    const res = await apiFetch<{ order_id: string }>("/api/events/register", {
       method: "POST",
       body: JSON.stringify({
         order: orderPayload,

@@ -255,17 +255,18 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 		RespondError(w, http.StatusBadRequest, "invalid event_date format, use RFC3339")
 		return
 	}
+	eventEndDate := parseOptionalTime(req.EventEndDate)
 
 	var eventID string
 	err = db.Pool.QueryRow(r.Context(), `
 		INSERT INTO events (title, description, slug, event_type, parent_event_id,
-		                    event_date, location, meeting_url, is_published,
+		                    event_date, event_end_date, location, meeting_url, is_published,
 		                    theme_color, cover_image_url, content_blocks)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 		RETURNING id
 	`,
 		req.Title, req.Description, slug, eventType, req.ParentEventID,
-		eventDate, req.Location, req.MeetingURL, req.IsPublished,
+		eventDate, eventEndDate, req.Location, req.MeetingURL, req.IsPublished,
 		themeColor, req.CoverImageURL, contentBlocksJSON,
 	).Scan(&eventID)
 
@@ -289,7 +290,7 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 			                         start_date, end_date, capacity, is_active)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
 		`, eventID, name, tier.Price, tier.Description, tier.MinQty, tier.MaxQty,
-			tier.StartDate, tier.EndDate, tier.Capacity)
+			parseOptionalTime(tier.StartDate), parseOptionalTime(tier.EndDate), tier.Capacity)
 	}
 
 	RespondJSON(w, http.StatusCreated, map[string]string{"id": eventID})
@@ -311,11 +312,21 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slug := slugify(req.Slug)
+	eventType := req.EventType
+	if eventType == "" {
+		eventType = "SINGLE"
+	}
+	themeColor := req.ThemeColor
+	if themeColor == "" {
+		themeColor = "purple"
+	}
+
 	eventDate, err := time.Parse(time.RFC3339, req.EventDate)
 	if err != nil {
 		RespondError(w, http.StatusBadRequest, "invalid event_date format, use RFC3339")
 		return
 	}
+	eventEndDate := parseOptionalTime(req.EventEndDate)
 
 	contentBlocksJSON, _ := json.Marshal(req.ContentBlocks)
 	if contentBlocksJSON == nil {
@@ -324,13 +335,14 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 
 	_, err = db.Pool.Exec(r.Context(), `
 		UPDATE events SET title=$1, description=$2, slug=$3, event_type=$4,
-		  parent_event_id=$5, event_date=$6, location=$7, meeting_url=$8,
-		  is_published=$9, theme_color=$10, cover_image_url=$11, content_blocks=$12
-		WHERE id=$13
+		  parent_event_id=$5, event_date=$6, event_end_date=$7,
+		  location=$8, meeting_url=$9, is_published=$10,
+		  theme_color=$11, cover_image_url=$12, content_blocks=$13
+		WHERE id=$14
 	`,
-		req.Title, req.Description, slug, req.EventType, req.ParentEventID,
-		eventDate, req.Location, req.MeetingURL, req.IsPublished,
-		req.ThemeColor, req.CoverImageURL, contentBlocksJSON, id,
+		req.Title, req.Description, slug, eventType, req.ParentEventID,
+		eventDate, eventEndDate, req.Location, req.MeetingURL, req.IsPublished,
+		themeColor, req.CoverImageURL, contentBlocksJSON, id,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "23505") {
@@ -373,20 +385,22 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		if name == "" {
 			name = "Regular"
 		}
+		startDate := parseOptionalTime(tier.StartDate)
+		endDate := parseOptionalTime(tier.EndDate)
 		if tier.ID != nil && existingIDs[*tier.ID] {
 			_, _ = db.Pool.Exec(r.Context(), `
 				UPDATE ticket_tiers SET name=$1, price=$2, description=$3, min_qty=$4,
 				  max_qty=$5, start_date=$6, end_date=$7, capacity=$8
 				WHERE id=$9
 			`, name, tier.Price, tier.Description, tier.MinQty,
-				tier.MaxQty, tier.StartDate, tier.EndDate, tier.Capacity, tier.ID)
+				tier.MaxQty, startDate, endDate, tier.Capacity, tier.ID)
 		} else {
 			_, _ = db.Pool.Exec(r.Context(), `
 				INSERT INTO ticket_tiers (event_id, name, price, description, min_qty, max_qty,
 				                         start_date, end_date, capacity, is_active)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
 			`, id, name, tier.Price, tier.Description, tier.MinQty,
-				tier.MaxQty, tier.StartDate, tier.EndDate, tier.Capacity)
+				tier.MaxQty, startDate, endDate, tier.Capacity)
 		}
 	}
 
@@ -529,4 +543,21 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RespondJSON(w, http.StatusCreated, map[string]string{"order_id": orderID})
+}
+
+// parseOptionalTime safely parses an optional RFC 3339 timestamp pointer.
+// Returns nil if the pointer is nil, empty, or unparseable.
+func parseOptionalTime(ts *string) *time.Time {
+	if ts == nil || *ts == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, *ts)
+	if err != nil {
+		// Also try without nanoseconds (e.g. "2006-01-02T15:04:05Z")
+		t, err = time.Parse("2006-01-02T15:04:05Z07:00", *ts)
+		if err != nil {
+			return nil
+		}
+	}
+	return &t
 }

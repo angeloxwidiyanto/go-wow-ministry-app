@@ -83,8 +83,8 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
     
     startTransition(async () => {
       const result = await updateEventAction(event.id, formData);
-      if (result?.error) {
-        setErrorMsg(result.error);
+      if (result && !result.success) {
+        setErrorMsg(result.message || "Update failed. Please try again.");
       }
     });
   };

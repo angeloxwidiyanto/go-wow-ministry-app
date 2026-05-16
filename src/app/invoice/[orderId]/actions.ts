@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { apiFetch } from "@/utils/apiFetch";
+import { apiFetch } from "@/utils/api";
 
 export async function uploadPaymentProofAction(orderId: string, formData: FormData) {
   const supabase = createAdminClient();
