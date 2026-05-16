@@ -222,15 +222,30 @@ export default function InvoiceClient({ order }: { order: Order }) {
                     {isPaid && (
                       <div className="mt-2 bg-white p-2 rounded-xl border border-zinc-200 shadow-sm print:shadow-none print:border-none">
                         {order.events.meeting_url ? (
-                          <a
-                            href={`/api/check-in/${attendee.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">videocam</span>
-                            Join Virtual Event
-                          </a>
+                          isTooEarly ? (
+                            <div className="flex flex-col items-end text-right">
+                              <button
+                                disabled
+                                className="inline-flex items-center gap-2 bg-zinc-100 text-zinc-400 px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed shadow-inner border border-zinc-200"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">lock_clock</span>
+                                Join Virtual Event
+                              </button>
+                              <p className="text-[10px] text-amber-600 font-semibold mt-2 max-w-[150px]">
+                                Opens 30 mins before event starts
+                              </p>
+                            </div>
+                          ) : (
+                            <a
+                              href={`/check-in/${attendee.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">videocam</span>
+                              Join Virtual Event
+                            </a>
+                          )
                         ) : (
                           <div className="flex flex-col items-center gap-2">
                             <QRCode

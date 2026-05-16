@@ -53,6 +53,7 @@ type Event struct {
 	EventEndDate  *time.Time  `json:"event_end_date"`
 	Location      *string     `json:"location"`
 	MeetingURL    *string     `json:"meeting_url"`
+	CheckinWindowMinutes *int `json:"checkin_window_minutes"`
 	IsPublished   bool        `json:"is_published"`
 	ThemeColor    string      `json:"theme_color"`
 	CoverImageURL *string     `json:"cover_image_url"`
