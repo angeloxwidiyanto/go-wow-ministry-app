@@ -24,6 +24,7 @@ type Order = {
     ticket_price: number;
     theme_color: string;
     meeting_url: string | null;
+    checkin_window_minutes?: number | null;
   };
   event_attendees: {
     id: string;

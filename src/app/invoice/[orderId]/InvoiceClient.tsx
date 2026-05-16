@@ -24,6 +24,7 @@ type Order = {
     ticket_price: number;
     theme_color: string;
     meeting_url: string | null;
+    checkin_window_minutes?: number | null;
   };
   event_attendees: {
     id: string;
@@ -59,7 +60,11 @@ export default function InvoiceClient({ order }: { order: Order }) {
 
   const eventDate = new Date(order.events.event_date);
   const diffInMinutes = (eventDate.getTime() - now.getTime()) / (1000 * 60);
-  const isTooEarly = diffInMinutes > 30;
+  
+  // Use the window param if redirected with error, or fallback to the event setting, or 30 mins default
+  const windowParam = searchParams.get("window");
+  const checkinWindow = windowParam ? parseInt(windowParam) : (order.events.checkin_window_minutes ?? 30);
+  const isTooEarly = diffInMinutes > checkinWindow;
 
   if (!mounted) return null;
 

@@ -17,7 +17,7 @@ import (
 func ListEvents(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Pool.Query(r.Context(), `
 		SELECT id, title, description, slug, event_type, parent_event_id,
-		       event_date, event_end_date, location, meeting_url, is_published,
+		       event_date, event_end_date, location, meeting_url, checkin_window_minutes, is_published,
 		       theme_color, cover_image_url, content_blocks, created_at
 		FROM events
 		ORDER BY event_date DESC
@@ -34,7 +34,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		var contentBlocksRaw []byte
 		if err := rows.Scan(
 			&e.ID, &e.Title, &e.Description, &e.Slug, &e.EventType, &e.ParentEventID,
-			&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.IsPublished,
+			&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.CheckinWindowMinutes, &e.IsPublished,
 			&e.ThemeColor, &e.CoverImageURL, &contentBlocksRaw, &e.CreatedAt,
 		); err != nil {
 			RespondError(w, http.StatusInternalServerError, err.Error())
@@ -52,7 +52,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 func ListPublicEvents(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Pool.Query(r.Context(), `
 		SELECT id, title, description, slug, event_type, parent_event_id,
-		       event_date, event_end_date, location, meeting_url, is_published,
+		       event_date, event_end_date, location, meeting_url, checkin_window_minutes, is_published,
 		       theme_color, cover_image_url, content_blocks, created_at
 		FROM events
 		WHERE is_published = true
@@ -70,7 +70,7 @@ func ListPublicEvents(w http.ResponseWriter, r *http.Request) {
 		var contentBlocksRaw []byte
 		if err := rows.Scan(
 			&e.ID, &e.Title, &e.Description, &e.Slug, &e.EventType, &e.ParentEventID,
-			&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.IsPublished,
+			&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.CheckinWindowMinutes, &e.IsPublished,
 			&e.ThemeColor, &e.CoverImageURL, &contentBlocksRaw, &e.CreatedAt,
 		); err != nil {
 			RespondError(w, http.StatusInternalServerError, err.Error())
@@ -92,12 +92,12 @@ func GetEvent(w http.ResponseWriter, r *http.Request) {
 	var contentBlocksRaw []byte
 	err := db.Pool.QueryRow(r.Context(), `
 		SELECT id, title, description, slug, event_type, parent_event_id,
-		       event_date, event_end_date, location, meeting_url, is_published,
+		       event_date, event_end_date, location, meeting_url, checkin_window_minutes, is_published,
 		       theme_color, cover_image_url, content_blocks, created_at
 		FROM events WHERE id = $1
-	`, id).Scan(
+	).Scan(
 		&e.ID, &e.Title, &e.Description, &e.Slug, &e.EventType, &e.ParentEventID,
-		&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.IsPublished,
+		&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.CheckinWindowMinutes, &e.IsPublished,
 		&e.ThemeColor, &e.CoverImageURL, &contentBlocksRaw, &e.CreatedAt,
 	)
 	if err != nil {
@@ -136,12 +136,12 @@ func GetEventBySlug(w http.ResponseWriter, r *http.Request) {
 	var contentBlocksRaw []byte
 	err := db.Pool.QueryRow(r.Context(), `
 		SELECT id, title, description, slug, event_type, parent_event_id,
-		       event_date, event_end_date, location, meeting_url, is_published,
+		       event_date, event_end_date, location, meeting_url, checkin_window_minutes, is_published,
 		       theme_color, cover_image_url, content_blocks, created_at
 		FROM events WHERE slug = $1 AND is_published = true
-	`, slug).Scan(
+	).Scan(
 		&e.ID, &e.Title, &e.Description, &e.Slug, &e.EventType, &e.ParentEventID,
-		&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.IsPublished,
+		&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.CheckinWindowMinutes, &e.IsPublished,
 		&e.ThemeColor, &e.CoverImageURL, &contentBlocksRaw, &e.CreatedAt,
 	)
 	if err != nil {
@@ -260,13 +260,13 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 	var eventID string
 	err = db.Pool.QueryRow(r.Context(), `
 		INSERT INTO events (title, description, slug, event_type, parent_event_id,
-		                    event_date, event_end_date, location, meeting_url, is_published,
+		                    event_date, event_end_date, location, meeting_url, checkin_window_minutes, is_published,
 		                    theme_color, cover_image_url, content_blocks)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 		RETURNING id
 	`,
 		req.Title, req.Description, slug, eventType, req.ParentEventID,
-		eventDate, eventEndDate, req.Location, req.MeetingURL, req.IsPublished,
+		eventDate, eventEndDate, req.Location, req.MeetingURL, req.CheckinWindowMinutes, req.IsPublished,
 		themeColor, req.CoverImageURL, contentBlocksJSON,
 	).Scan(&eventID)
 
@@ -334,17 +334,16 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Pool.Exec(r.Context(), `
-		UPDATE events SET title=$1, description=$2, slug=$3, event_type=$4,
-		  parent_event_id=$5, event_date=$6, event_end_date=$7,
-		  location=$8, meeting_url=$9, is_published=$10,
-		  theme_color=$11, cover_image_url=$12, content_blocks=$13
-		WHERE id=$14
+		UPDATE events SET title=$1, description=$2, slug=$3, event_type=$4, 
+		                 parent_event_id=$5, event_date=$6, event_end_date=$7,
+		                 location=$8, meeting_url=$9, checkin_window_minutes=$10, is_published=$11, 
+		                 theme_color=$12, cover_image_url=$13, content_blocks=$14
+		WHERE id=$15
 	`,
 		req.Title, req.Description, slug, eventType, req.ParentEventID,
-		eventDate, eventEndDate, req.Location, req.MeetingURL, req.IsPublished,
+		eventDate, eventEndDate, req.Location, req.MeetingURL, req.CheckinWindowMinutes, req.IsPublished,
 		themeColor, req.CoverImageURL, contentBlocksJSON, id,
-	)
-	if err != nil {
+	)	if err != nil {
 		if strings.Contains(err.Error(), "23505") {
 			RespondError(w, http.StatusConflict, "an event with this slug already exists")
 			return
@@ -556,6 +555,14 @@ func parseOptionalTime(ts *string) *time.Time {
 		// Also try without nanoseconds (e.g. "2006-01-02T15:04:05Z")
 		t, err = time.Parse("2006-01-02T15:04:05Z07:00", *ts)
 		if err != nil {
+			return nil
+		}
+	}
+	return &t
+}
+urn &t
+}
+ {
 			return nil
 		}
 	}

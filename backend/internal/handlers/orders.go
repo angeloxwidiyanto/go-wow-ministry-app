@@ -157,15 +157,16 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		Description   *string     `json:"description"`
 		Location      *string     `json:"location"`
 		MeetingURL    *string     `json:"meeting_url"`
+		CheckinWindowMinutes *int `json:"checkin_window_minutes"`
 		EventDate     string      `json:"event_date"`
 		CoverImageURL *string     `json:"cover_image_url"`
 		ThemeColor    string      `json:"theme_color"`
 	}
 	err = db.Pool.QueryRow(r.Context(), `
-		SELECT title, description, location, meeting_url, event_date::text, cover_image_url, theme_color
+		SELECT title, description, location, meeting_url, checkin_window_minutes, event_date::text, cover_image_url, theme_color
 		FROM events WHERE id = $1
 	`, o.EventID).Scan(
-		&event.Title, &event.Description, &event.Location, &event.MeetingURL, &event.EventDate, &event.CoverImageURL, &event.ThemeColor,
+		&event.Title, &event.Description, &event.Location, &event.MeetingURL, &event.CheckinWindowMinutes, &event.EventDate, &event.CoverImageURL, &event.ThemeColor,
 	)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, err.Error())

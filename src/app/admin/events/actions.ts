@@ -135,6 +135,7 @@ function buildEventPayload(formData: FormData): Record<string, unknown> {
     event_end_date: toRFC3339(formData.get("event_end_date")?.toString()),
     location: formData.get("location")?.toString() || null,
     meeting_url: formData.get("meeting_url")?.toString() || null,
+    checkin_window_minutes: parseInt(formData.get("checkin_window_minutes")?.toString() || "30", 10),
     is_published: formData.get("is_published") === "on",
     event_type: formData.get("event_type")?.toString() || "SINGLE",
     parent_event_id: formData.get("parent_event_id")?.toString() || null,

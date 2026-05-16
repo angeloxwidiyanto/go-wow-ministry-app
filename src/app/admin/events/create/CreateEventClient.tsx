@@ -234,6 +234,23 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
             </div>
 
             <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-zinc-700 mb-2">Virtual Door Opens</label>
+              <div className="flex items-center">
+                <input 
+                  name="checkin_window_minutes" 
+                  type="number" 
+                  defaultValue={30}
+                  min={0}
+                  className="w-24 px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-l-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white outline-none transition-colors" 
+                />
+                <span className="px-4 py-3 bg-zinc-100 border border-l-0 border-zinc-200 rounded-r-xl text-zinc-500 text-sm font-medium">
+                  minutes before the event starts
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 mt-2">The "Join Virtual Event" button on the E-Ticket will be locked until this time.</p>
+            </div>
+
+            <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-zinc-700 mb-2">Short Description</label>
               <textarea 
                 name="description" 

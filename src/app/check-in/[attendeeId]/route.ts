@@ -23,7 +23,8 @@ export async function GET(
           id,
           title,
           event_date,
-          meeting_url
+          meeting_url,
+          checkin_window_minutes
         )
       )
     `)
@@ -47,15 +48,15 @@ export async function GET(
     return new NextResponse("This event does not have a virtual meeting URL.", { status: 400 });
   }
 
-  // 4. Validate Time (Gated Check-in: 30 mins before)
+  // 4. Validate Time (Gated Check-in)
+  const windowMinutes = event.checkin_window_minutes ?? 30; // Default to 30 mins if not set
   const eventDate = new Date(event.event_date);
   const now = new Date();
   const diffInMinutes = (eventDate.getTime() - now.getTime()) / (1000 * 60);
 
-  if (diffInMinutes > 30) {
-    // If they click > 30 mins before the event, reject or redirect to a waiting page
-    // Here we can just redirect them to their invoice page with a URL parameter ?error=too_early
-    const invoiceUrl = new URL(`/invoice/${order.id}?error=too_early`, request.url);
+  if (diffInMinutes > windowMinutes) {
+    // If they click too early, reject or redirect to a waiting page
+    const invoiceUrl = new URL(`/invoice/${order.id}?error=too_early&window=${windowMinutes}`, request.url);
     return NextResponse.redirect(invoiceUrl);
   }
 
