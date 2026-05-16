@@ -4,6 +4,14 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/utils/api";
 
+type Order = {
+  id: string;
+  status: string;
+  total_amount: number;
+  payment_proof_url: string | null;
+  [key: string]: unknown;
+};
+
 export async function uploadPaymentProofAction(orderId: string, formData: FormData) {
   const supabase = createAdminClient();
   const file = formData.get("proof") as File;
@@ -24,10 +32,11 @@ export async function uploadPaymentProofAction(orderId: string, formData: FormDa
   }
 
   // Verify order exists and is in PENDING status
-  let order;
+  let order: Order;
   try {
-    order = await apiFetch(`/api/orders/${orderId}`);
+    order = await apiFetch<Order>(`/api/orders/${orderId}`);
   } catch (err) {
+    void err;
     return { error: "Order not found." };
   }
 

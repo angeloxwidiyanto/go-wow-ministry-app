@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/utils/api";
 
 type ActionResult = { success?: boolean; error?: string };
-type PeopleResult = { data?: unknown[]; error?: string };
+type PersonResult = { id: string; full_name: string; email: string | null; whatsapp_number: string | null };
+type PeopleResult = { data?: PersonResult[]; error?: string };
 
 export async function createNewPersonAction(attendee: Record<string, unknown>): Promise<ActionResult> {
   try {
@@ -41,7 +42,7 @@ export async function mergePersonAction(
 export async function searchPeopleAction(query: string): Promise<PeopleResult> {
   if (!query || query.length < 2) return { data: [] };
   try {
-    const data = await apiFetch<unknown[]>(
+    const data = await apiFetch<PersonResult[]>(
       `/api/members?search=${encodeURIComponent(query)}&limit=10`
     );
     return { data };

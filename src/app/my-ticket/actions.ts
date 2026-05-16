@@ -9,9 +9,9 @@ export async function lookupTicketAction(query: string) {
     return { error: "Please enter at least 3 characters." };
   }
 
-  let data;
+  let data: unknown[];
   try {
-    data = await apiFetch(`/api/orders/search?q=${encodeURIComponent(q)}`, {
+    data = await apiFetch<unknown[]>(`/api/orders/search?q=${encodeURIComponent(q)}`, {
       next: { revalidate: 0 }
     });
   } catch (error) {

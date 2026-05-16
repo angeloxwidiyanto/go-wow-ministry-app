@@ -3,15 +3,45 @@ import InvoiceClient from "./InvoiceClient";
 import PaymentProofUpload from "./PaymentProofUpload";
 import { apiFetch } from "@/utils/api";
 
+type Order = {
+  id: string;
+  created_at: string;
+  pic_name: string;
+  pic_email: string;
+  pic_whatsapp: string;
+  status: "PENDING" | "PAID" | "CANCELLED";
+  total_tickets: number;
+  total_amount: number;
+  discount_amount: number;
+  applied_voucher: string | null;
+  payment_proof_url: string | null;
+  events: {
+    title: string;
+    description: string | null;
+    location: string;
+    event_date: string;
+    ticket_price: number;
+    theme_color: string;
+    meeting_url: string | null;
+  };
+  event_attendees: {
+    id: string;
+    attendee_name: string;
+    registration_number: string;
+    registration_type: string;
+    origin_church: string | null;
+  }[];
+};
+
 export const revalidate = 0;
 
 export default async function InvoicePage({ params }: { params: Promise<{ orderId: string }> }) {
   const resolvedParams = await params;
 
   // Fetch the Order along with its related Event and Attendees from Go API
-  let order;
+  let order: Order | null = null;
   try {
-    order = await apiFetch(`/api/orders/${resolvedParams.orderId}`, {
+    order = await apiFetch<Order>(`/api/orders/${resolvedParams.orderId}`, {
       next: { revalidate: 0 }
     });
   } catch (error) {

@@ -88,12 +88,19 @@ export async function toggleEventPublishAction(
 
 /**
  * Converts any date string (datetime-local "YYYY-MM-DDTHH:mm" or already-ISO)
- * into a full RFC 3339 string the Go backend can parse.  Returns null when empty.
+ * into a full RFC 3339 string the Go backend can parse. Returns null when empty.
+ * Defaults to treating timezone-less inputs as WIB (UTC+7).
  */
 function toRFC3339(value?: string | null): string | null {
   if (!value) return null;
   try {
-    const d = new Date(value);
+    // If the input doesn't contain a timezone offset (Z, + or - at the end), assume WIB (+07:00)
+    let timeStr = value;
+    if (!timeStr.endsWith("Z") && !timeStr.match(/[+-]\d{2}:\d{2}$/)) {
+      timeStr = `${timeStr}+07:00`;
+    }
+    
+    const d = new Date(timeStr);
     if (isNaN(d.getTime())) return null;
     return d.toISOString(); // e.g. "2026-05-16T07:30:00.000Z"
   } catch {
