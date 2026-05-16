@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -70,6 +69,6 @@ func FonnteWebhook(w http.ResponseWriter, r *http.Request) {
 func FonnteWebhookGet(w http.ResponseWriter, r *http.Request) {
 	RespondJSON(w, http.StatusOK, map[string]interface{}{
 		"status":  true,
-		"message": fmt.Sprintf("Fonnte Webhook endpoint is active. Use POST to send data."),
+		"message": "Fonnte Webhook endpoint is active. Use POST to send data.",
 	})
 }

@@ -95,7 +95,7 @@ func GetEvent(w http.ResponseWriter, r *http.Request) {
 		       event_date, event_end_date, location, meeting_url, checkin_window_minutes, is_published,
 		       theme_color, cover_image_url, content_blocks, created_at
 		FROM events WHERE id = $1
-	).Scan(
+	`, id).Scan(
 		&e.ID, &e.Title, &e.Description, &e.Slug, &e.EventType, &e.ParentEventID,
 		&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.CheckinWindowMinutes, &e.IsPublished,
 		&e.ThemeColor, &e.CoverImageURL, &contentBlocksRaw, &e.CreatedAt,
@@ -139,7 +139,7 @@ func GetEventBySlug(w http.ResponseWriter, r *http.Request) {
 		       event_date, event_end_date, location, meeting_url, checkin_window_minutes, is_published,
 		       theme_color, cover_image_url, content_blocks, created_at
 		FROM events WHERE slug = $1 AND is_published = true
-	).Scan(
+	`, slug).Scan(
 		&e.ID, &e.Title, &e.Description, &e.Slug, &e.EventType, &e.ParentEventID,
 		&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.CheckinWindowMinutes, &e.IsPublished,
 		&e.ThemeColor, &e.CoverImageURL, &contentBlocksRaw, &e.CreatedAt,
@@ -197,6 +197,7 @@ type createEventRequest struct {
 	EventEndDate  *string     `json:"event_end_date"`
 	Location      *string     `json:"location"`
 	MeetingURL    *string     `json:"meeting_url"`
+	CheckinWindowMinutes *int `json:"checkin_window_minutes"`
 	IsPublished   bool        `json:"is_published"`
 	ThemeColor    string      `json:"theme_color"`
 	CoverImageURL *string     `json:"cover_image_url"`
@@ -269,7 +270,6 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 		eventDate, eventEndDate, req.Location, req.MeetingURL, req.CheckinWindowMinutes, req.IsPublished,
 		themeColor, req.CoverImageURL, contentBlocksJSON,
 	).Scan(&eventID)
-
 	if err != nil {
 		if strings.Contains(err.Error(), "23505") {
 			RespondError(w, http.StatusConflict, "an event with this slug already exists")
@@ -343,7 +343,8 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		req.Title, req.Description, slug, eventType, req.ParentEventID,
 		eventDate, eventEndDate, req.Location, req.MeetingURL, req.CheckinWindowMinutes, req.IsPublished,
 		themeColor, req.CoverImageURL, contentBlocksJSON, id,
-	)	if err != nil {
+	)
+	if err != nil {
 		if strings.Contains(err.Error(), "23505") {
 			RespondError(w, http.StatusConflict, "an event with this slug already exists")
 			return
@@ -501,7 +502,7 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 					}
 					var roleID string
 					err := db.Pool.QueryRow(r.Context(), `SELECT id FROM ministry_roles WHERE name ILIKE $1 LIMIT 1`, roleName).Scan(&roleID)
-					if err != nil {
+	if err != nil {
 						_ = db.Pool.QueryRow(r.Context(), `INSERT INTO ministry_roles (name) VALUES ($1) RETURNING id`, roleName).Scan(&roleID)
 					}
 					if roleID != "" {
@@ -535,7 +536,6 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 		`SELECT register_for_event($1::jsonb, $2::jsonb)`,
 		string(orderJSON), string(attendeesJSON),
 	).Scan(&orderID)
-
 	if err != nil {
 		RespondError(w, http.StatusBadRequest, err.Error())
 		return
@@ -555,14 +555,6 @@ func parseOptionalTime(ts *string) *time.Time {
 		// Also try without nanoseconds (e.g. "2006-01-02T15:04:05Z")
 		t, err = time.Parse("2006-01-02T15:04:05Z07:00", *ts)
 		if err != nil {
-			return nil
-		}
-	}
-	return &t
-}
-urn &t
-}
- {
 			return nil
 		}
 	}
