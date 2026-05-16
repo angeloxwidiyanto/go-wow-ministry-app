@@ -22,6 +22,6 @@ export async function updateOrderStatusAction(
     };
   }
 
-  revalidatePath("/admin/orders");
+  revalidatePath("/admin", "layout");
   return { success: true, message: `Order marked as ${status}.` };
 }

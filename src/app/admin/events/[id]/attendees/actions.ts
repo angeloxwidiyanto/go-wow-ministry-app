@@ -21,7 +21,7 @@ export async function updateOrderStatusAction(
     };
   }
 
-  revalidatePath(`/admin/events/${eventId}/attendees`);
+  revalidatePath("/admin", "layout");
   return { success: true };
 }
 
@@ -45,6 +45,6 @@ export async function bulkUpdateOrderStatusAction(
     return { error: `${failed.length} of ${orderIds.length} orders failed to update.` };
   }
 
-  revalidatePath(`/admin/events/${eventId}/attendees`);
+  revalidatePath("/admin", "layout");
   return { success: true };
 }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { updateOrderStatusAction, bulkUpdateOrderStatusAction } from "./actions";
 
 type Attendee = {
@@ -23,17 +24,22 @@ type Attendee = {
 };
 
 export default function EventAttendeesClient({ eventTitle, attendees }: { eventTitle: string, attendees: Attendee[] }) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [isPending, startTransition] = useTransition();
   const [selectedAttendeeIds, setSelectedAttendeeIds] = useState<Set<string>>(new Set());
 
-  const filteredAttendees = attendees.filter((a) =>
-    a.attendee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (a.attendee_email && a.attendee_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (a.attendee_whatsapp && a.attendee_whatsapp.includes(searchQuery)) ||
-    a.registration_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (a.pic_name || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredAttendees = attendees.filter((a) => {
+    const matchesSearch = a.attendee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.attendee_email && a.attendee_email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (a.attendee_whatsapp && a.attendee_whatsapp.includes(searchQuery)) ||
+      a.registration_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.pic_name || "").toLowerCase().includes(searchQuery.toLowerCase());
+      
+    if (statusFilter === "ALL") return matchesSearch;
+    return matchesSearch && a.status === statusFilter;
+  });
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -57,7 +63,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
   const getSelectedOrderIdsAndEventId = () => {
     const selectedAttendees = attendees.filter(a => selectedAttendeeIds.has(a.id));
     const orderIds = Array.from(new Set(selectedAttendees.map(a => a.order_id)));
-    const eventId = selectedAttendees.length > 0 ? selectedAttendees[0].registration_orders.event_id : "";
+    const eventId = selectedAttendees.length > 0 ? selectedAttendees[0].event_id : "";
     return { orderIds, eventId };
   };
 
@@ -68,6 +74,7 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
     startTransition(async () => {
       await bulkUpdateOrderStatusAction(orderIds, "PAID", eventId);
       setSelectedAttendeeIds(new Set());
+      router.refresh();
     });
   };
 
@@ -80,12 +87,14 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
     startTransition(async () => {
       await bulkUpdateOrderStatusAction(orderIds, "CANCELLED", eventId);
       setSelectedAttendeeIds(new Set());
+      router.refresh();
     });
   };
 
   const handleUpdateStatus = (orderId: string, status: string, eventId: string) => {
     startTransition(async () => {
       await updateOrderStatusAction(orderId, status, eventId);
+      router.refresh();
     });
   };
 
@@ -178,6 +187,16 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 bg-white border border-zinc-200 rounded-lg text-sm font-semibold text-zinc-700 focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+            >
+              <option value="ALL">All Status</option>
+              <option value="PAID">Paid</option>
+              <option value="PENDING">Pending</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
             <button 
               className="px-4 py-2 bg-white border border-zinc-200 text-zinc-700 text-sm font-semibold rounded-lg shadow-sm hover:bg-zinc-50 transition-colors flex items-center gap-2"
               onClick={exportToCSV}
@@ -225,7 +244,12 @@ export default function EventAttendeesClient({ eventTitle, attendees }: { eventT
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm font-semibold text-zinc-900">{a.attendee_name}</p>
+                      <p className="text-sm font-semibold text-zinc-900 flex items-center gap-1.5">
+                        {a.attendee_name}
+                        {status === "PAID" && (
+                          <span className="material-symbols-outlined text-emerald-500 text-[16px]" title="Paid">check_circle</span>
+                        )}
+                      </p>
                       <p className="text-xs text-zinc-400 mt-0.5">{a.origin_church || "No church"} {a.ministry_role ? `• ${a.ministry_role}` : ""}</p>
                     </td>
                     <td className="px-6 py-4">
