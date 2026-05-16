@@ -26,7 +26,7 @@ func ListMembers(w http.ResponseWriter, r *http.Request) {
 		pattern := "%" + search + "%"
 		rows, err = db.Pool.Query(r.Context(), `
 			SELECT p.id, p.email, p.whatsapp_number, p.full_name, p.church_title,
-			       p.gender, p.birth_date, p.church_id, p.created_at, p.last_updated_at,
+			       p.gender, p.birth_date::TEXT, p.church_id, p.created_at, p.last_updated_at,
 			       c.name AS church_name,
 			       COALESCE(
 			         (SELECT string_agg(mr.name, ', ')
@@ -46,7 +46,7 @@ func ListMembers(w http.ResponseWriter, r *http.Request) {
 	} else {
 		rows, err = db.Pool.Query(r.Context(), `
 			SELECT p.id, p.email, p.whatsapp_number, p.full_name, p.church_title,
-			       p.gender, p.birth_date, p.church_id, p.created_at, p.last_updated_at,
+			       p.gender, p.birth_date::TEXT, p.church_id, p.created_at, p.last_updated_at,
 			       c.name AS church_name,
 			       COALESCE(
 			         (SELECT string_agg(mr.name, ', ')

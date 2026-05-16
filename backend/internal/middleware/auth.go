@@ -32,7 +32,7 @@ func RequireAuth(next http.Handler) http.Handler {
 
 		claims, err := auth.ValidateToken(tokenString)
 		if err != nil {
-			respondJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
+			respondJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid token"})
 			return
 		}
 

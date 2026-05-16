@@ -16,19 +16,8 @@ type Member = {
   church_title: string | null;
   gender: string | null;
   birth_date: string | null;
-  churches: { name: string } | null;
-  person_roles: RelationalRole[];
-  event_attendees: {
-    id: string;
-    created_at: string;
-    registration_orders: {
-      events: {
-        id: string;
-        title: string;
-        event_date: string;
-      }
-    }
-  }[];
+  church_name?: string;
+  roles?: string[];
   created_at: string;
 };
 
@@ -101,8 +90,8 @@ export default function MembersClient({
       setCustomTitle("");
     }
     
-    setChurchInput(member.churches?.name || "");
-    setSelectedRoles(member.person_roles.map(pr => pr.ministry_roles.name));
+    setChurchInput(member.church_name || "");
+    setSelectedRoles(member.roles || []);
     
     setIsManualFormOpen(true);
     setIsAddModalOpen(true);
@@ -110,12 +99,12 @@ export default function MembersClient({
 
   // Filtering
   const filteredMembers = members.filter((member) => {
-    const rolesStr = member.person_roles.map(pr => pr.ministry_roles.name).join(" ");
+    const rolesStr = (member.roles || []).join(" ");
     return (
       member.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
       rolesStr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (member.churches?.name && member.churches.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      (member.church_name && member.church_name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   });
 
@@ -285,14 +274,14 @@ export default function MembersClient({
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm text-zinc-700">{member.gender || "U"}, {calculateAge(member.birth_date)} y.o.</p>
-                    <p className="text-xs text-zinc-500 truncate max-w-[150px]">{member.churches?.name || "No church listed"}</p>
+                    <p className="text-xs text-zinc-500 truncate max-w-[150px]">{member.church_name || "No church listed"}</p>
                   </td>
                   <td className="px-6 py-4">
-                    {member.person_roles && member.person_roles.length > 0 ? (
+                    {member.roles && member.roles.length > 0 ? (
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {member.person_roles.map((pr, idx) => (
-                          <span key={idx} className="text-[10px] font-medium px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
-                            {pr.ministry_roles.name}
+                        {(member.roles || []).map((role, idx) => (
+                          <span key={idx} className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            {role}
                           </span>
                         ))}
                       </div>
@@ -686,13 +675,13 @@ function MemberProfileModal({ member, onClose }: { member: Member, onClose: () =
                   </span>
                 )}
               </div>
-              <p className="text-white/70 text-sm font-medium">{member.churches?.name || "No church affiliated"}</p>
+              <p className="text-white/70 text-sm font-medium">{member.church_name || "No church affiliated"}</p>
               <div className="flex flex-wrap gap-2 mt-3">
-                {member.person_roles.map((pr, idx) => (
-                  <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white text-primary uppercase">
-                    {pr.ministry_roles.name}
-                  </span>
-                ))}
+                {(member.roles || []).map((role, idx) => (
+                          <span key={idx} className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            {role}
+                          </span>
+                        ))}
               </div>
             </div>
           </div>
@@ -736,12 +725,12 @@ function MemberProfileModal({ member, onClose }: { member: Member, onClose: () =
           <div>
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Event Participation History</h4>
-              <span className="text-xs font-bold bg-zinc-100 text-zinc-500 px-2 py-1 rounded-full">{member.event_attendees.length} Events</span>
+              <span className="text-xs font-bold bg-zinc-100 text-zinc-500 px-2 py-1 rounded-full">{0} Events</span>
             </div>
             
-            {member.event_attendees.length > 0 ? (
+            {0 > 0 ? (
               <div className="space-y-3">
-                {member.event_attendees.map((at, idx) => {
+                {([].map)((at, idx) => {
                   const event = at.registration_orders.events;
                   return (
                     <div key={idx} className="flex items-center justify-between p-4 bg-zinc-50 border border-zinc-100 rounded-2xl hover:bg-zinc-100/50 transition-colors">

@@ -7,6 +7,7 @@
  */
 
 import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 
 const API_BASE =
   process.env.INTERNAL_API_URL ||
@@ -25,8 +26,9 @@ export async function apiFetch<T = unknown>(
   path: string,
   options: FetchOptions = {}
 ): Promise<T> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("sb-access-token")?.value ?? "";
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? "";
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,

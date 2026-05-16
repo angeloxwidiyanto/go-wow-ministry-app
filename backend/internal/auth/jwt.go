@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -16,22 +17,42 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// ValidateToken parses and validates a Supabase JWT using SUPABASE_JWT_SECRET.
+// jwks is the global JWKS cache used to validate tokens
+var jwks keyfunc.Keyfunc
+
+// InitJWKS initializes the JWKS cache by fetching keys from Supabase
+func InitJWKS() error {
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	if supabaseURL == "" {
+		return fmt.Errorf("SUPABASE_URL is not configured")
+	}
+
+	jwksURL := fmt.Sprintf("%s/auth/v1/.well-known/jwks.json", supabaseURL)
+
+	// Create a new JWKS from the given URL. This will fetch the keys and
+	// cache them. It will automatically refresh the keys in the background
+	// according to default settings (usually cache-control headers).
+	k, err := keyfunc.NewDefault([]string{jwksURL})
+	if err != nil {
+		return fmt.Errorf("failed to create JWKS from URL: %w", err)
+	}
+
+	jwks = k
+	return nil
+}
+
+// ValidateToken parses and validates a Supabase JWT using the JWKS endpoint.
 // Returns the parsed claims on success, or an error if the token is invalid/expired.
 func ValidateToken(tokenString string) (*Claims, error) {
-	secret := os.Getenv("SUPABASE_JWT_SECRET")
-	if secret == "" {
-		return nil, fmt.Errorf("SUPABASE_JWT_SECRET is not configured")
+	if jwks == nil {
+		return nil, fmt.Errorf("JWKS cache is not initialized")
 	}
 
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
-		// Supabase uses HMAC-SHA256
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
+
+	// Parse the token using the JWKS keyfunc which handles selecting the correct
+	// key based on the 'kid' header and verifying the ES256 signature
+	token, err := jwt.ParseWithClaims(tokenString, claims, jwks.Keyfunc, jwt.WithValidMethods([]string{"ES256", "RS256", "HS256"}))
 
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)

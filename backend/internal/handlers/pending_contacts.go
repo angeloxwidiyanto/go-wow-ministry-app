@@ -45,7 +45,7 @@ func ListPendingContacts(w http.ResponseWriter, r *http.Request) {
 			ea.id, ea.order_id, ea.person_id, ea.ticket_tier_id,
 			ea.registration_number, ea.registration_type,
 			ea.attendee_name, ea.attendee_email, ea.attendee_whatsapp,
-			ea.church_title, ea.gender, ea.birth_date, ea.origin_church,
+			ea.church_title, ea.gender, ea.birth_date::TEXT, ea.origin_church,
 			ea.ministry_role, ea.attended_at, ea.created_at,
 			e.title AS event_title
 		FROM event_attendees ea

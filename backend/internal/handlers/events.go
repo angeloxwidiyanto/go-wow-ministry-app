@@ -47,6 +47,42 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	RespondJSON(w, http.StatusOK, events)
 }
 
+// ListPublicEvents handles GET /api/events/public
+// Returns only published events ordered by event_date desc.
+func ListPublicEvents(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Pool.Query(r.Context(), `
+		SELECT id, title, description, slug, event_type, parent_event_id,
+		       event_date, event_end_date, location, meeting_url, is_published,
+		       theme_color, cover_image_url, content_blocks, created_at
+		FROM events
+		WHERE is_published = true
+		ORDER BY event_date DESC
+	`)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	events := []models.Event{}
+	for rows.Next() {
+		var e models.Event
+		var contentBlocksRaw []byte
+		if err := rows.Scan(
+			&e.ID, &e.Title, &e.Description, &e.Slug, &e.EventType, &e.ParentEventID,
+			&e.EventDate, &e.EventEndDate, &e.Location, &e.MeetingURL, &e.IsPublished,
+			&e.ThemeColor, &e.CoverImageURL, &contentBlocksRaw, &e.CreatedAt,
+		); err != nil {
+			RespondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		_ = json.Unmarshal(contentBlocksRaw, &e.ContentBlocks)
+		events = append(events, e)
+	}
+
+	RespondJSON(w, http.StatusOK, events)
+}
+
 // GetEvent handles GET /api/events/{id}
 // Returns a single event with all its ticket tiers.
 func GetEvent(w http.ResponseWriter, r *http.Request) {

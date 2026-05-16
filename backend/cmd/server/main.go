@@ -14,6 +14,7 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 	"github.com/rs/cors"
+	"github.com/wowministry/api/internal/auth"
 	"github.com/wowministry/api/internal/db"
 	"github.com/wowministry/api/internal/handlers"
 	"github.com/wowministry/api/internal/middleware"
@@ -30,6 +31,12 @@ func main() {
 	}
 	defer db.Close()
 	log.Println("✅ Database connected")
+
+	// Initialize JWKS cache for validating Supabase JWTs
+	if err := auth.InitJWKS(); err != nil {
+		log.Fatalf("❌ JWKS initialization failed: %v", err)
+	}
+	log.Println("✅ JWKS cache initialized")
 
 	r := chi.NewRouter()
 
@@ -61,6 +68,7 @@ func main() {
 	// ── Public Routes (no auth required) ────────────────────────────────────
 	r.Group(func(r chi.Router) {
 		// Public event listing (published events only)
+		r.Get("/api/events/public", handlers.ListPublicEvents)
 		r.Get("/api/events/slug/{slug}", handlers.GetEventBySlug)
 
 		// Event registration (public form submission)

@@ -5,7 +5,7 @@ import Image from "next/image";
 export const revalidate = 0;
 
 export default async function EventsPage() {
-  const allEvents = await apiFetch<any[]>("/api/events") || [];
+  const allEvents = await apiFetch<any[]>("/api/events/public") || [];
   
   // Filter for published, top-level events, sorted ascending by date
   const events = allEvents

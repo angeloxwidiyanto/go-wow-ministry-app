@@ -6,7 +6,7 @@ export const revalidate = 3600; // revalidate hourly
 
 export default async function HomePage() {
   // Fetch upcoming published events (top 3)
-  const allEvents = await apiFetch<any[]>("/api/events") || [];
+  const allEvents = await apiFetch<any[]>("/api/events/public") || [];
   const now = new Date();
   
   const upcomingEvents = allEvents

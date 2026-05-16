@@ -31,7 +31,7 @@ export default async function EventLandingPage({ params }: { params: Promise<{ s
   let childEvents: any[] = [];
   if (event.event_type === 'SERIES_PARENT') {
     try {
-      const allEvents: any[] = await apiFetch("/api/events");
+      const allEvents: any[] = await apiFetch("/api/events/public");
       childEvents = allEvents
         .filter(e => e.parent_event_id === event.id && e.is_published)
         .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());

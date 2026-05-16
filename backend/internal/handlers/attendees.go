@@ -27,7 +27,7 @@ func ListAttendees(w http.ResponseWriter, r *http.Request) {
 		SELECT a.id, a.order_id, a.person_id, a.ticket_tier_id,
 		       a.registration_number, a.registration_type,
 		       a.attendee_name, a.attendee_email, a.attendee_whatsapp,
-		       a.church_title, a.gender, a.birth_date,
+		       a.church_title, a.gender, a.birth_date::TEXT,
 		       a.origin_church, a.ministry_role, a.attended_at, a.created_at
 		FROM event_attendees a
 		LEFT JOIN registration_orders o ON o.id = a.order_id

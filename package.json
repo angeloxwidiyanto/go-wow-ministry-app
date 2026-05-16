@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev:go": "cd backend && go run cmd/server/main.go",
+    "dev": "concurrently \"next dev\" \"npm run dev:go\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -25,14 +26,15 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.3.0",
     "typescript": "^5"
   }
 }
