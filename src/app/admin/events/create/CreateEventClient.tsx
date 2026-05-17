@@ -471,7 +471,10 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
                       />
                       <input 
                         value={voucher.discount}
-                        onChange={e => updateVoucher(voucher.id, 'discount', parseFloat(e.target.value))}
+                        onChange={e => {
+                          const val = parseFloat(e.target.value);
+                          updateVoucher(voucher.id, 'discount', isNaN(val) ? 0 : val);
+                        }}
                         type="number" 
                         min="0"
                         className="w-1/4 px-2 py-1.5 text-xs bg-white border border-zinc-200 rounded focus:outline-none"

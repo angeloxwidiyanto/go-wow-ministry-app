@@ -408,7 +408,10 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
                         <label className="block text-xs font-semibold text-zinc-600 mb-1">Max Qty</label>
                         <input 
                           value={tier.max_qty || ''}
-                          onChange={e => updateTicketTier(tier.id, 'max_qty', e.target.value ? parseInt(e.target.value) : null)}
+                          onChange={e => {
+                            const val = parseInt(e.target.value);
+                            updateTicketTier(tier.id, 'max_qty', isNaN(val) ? null : val);
+                          }}
                           type="number" 
                           min="1"
                           placeholder="No limit"
@@ -656,5 +659,8 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
         />
       )}
     </div>
+  );
+}
+ </div>
   );
 }
