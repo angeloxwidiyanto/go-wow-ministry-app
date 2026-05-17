@@ -120,6 +120,9 @@ func main() {
 		r.Put("/api/settings/fonnte-token", handlers.SaveFonnteToken)
 		r.Get("/api/settings/fonnte-test", handlers.TestFonnteToken)
 
+		// Uploads
+		r.Post("/api/upload/cover", handlers.UploadCoverImage)
+
 		// Fonnte send
 		r.Post("/api/fonnte/send", handlers.SendWhatsApp)
 

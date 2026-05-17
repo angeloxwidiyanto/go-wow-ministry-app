@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { updateEventAction } from "../../actions";
 import Link from "next/link";
+import ImageCropper from "@/components/ImageCropper";
 
 const COLORS = [
   { id: "purple", label: "Purple", bg: "bg-purple-600", border: "border-purple-600" },
@@ -23,6 +24,9 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
 
   // Builder States
   const [themeColor, setThemeColor] = useState(event.theme_color || "purple");
+  const [cropSourceUrl, setCropSourceUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [coverImageUrl, setCoverImageUrl] = useState(event.cover_image_url || "");
   const [blocks, setBlocks] = useState<{ id: number, type: string, content: string }[]>(event.content_blocks || []);
 
@@ -38,6 +42,39 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      setCropSourceUrl(url);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropSourceUrl(null);
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("cover_image", croppedBlob, "cover.jpg");
+      
+      const res = await fetch("/api/upload/cover", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to upload image");
+      }
+      setCoverImageUrl(data.url);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const addBlock = (type: string) => {
@@ -559,6 +596,14 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
           </button>
         </div>
       </form>
+
+      {cropSourceUrl && (
+        <ImageCropper
+          imageUrl={cropSourceUrl}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropSourceUrl(null)}
+        />
+      )}
     </div>
   );
 }
