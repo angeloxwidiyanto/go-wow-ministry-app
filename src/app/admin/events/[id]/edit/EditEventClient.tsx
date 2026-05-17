@@ -38,7 +38,12 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
       : [{ id: Date.now(), name: "Regular", price: 0, description: "", min_qty: 1, max_qty: null, start_date: null, end_date: null, capacity: null }]
   );
   const [vouchers, setVouchers] = useState<{ id: number, code: string, discount: number, type: string }[]>(
-    event.vouchers ? event.vouchers.map((v: any, i: number) => ({ ...v, id: Date.now() + i })) : []
+    event.event_vouchers ? event.event_vouchers.map((v: any, i: number) => ({
+      id: Date.now() + i,
+      code: v.code,
+      discount: v.discount_amount ?? 0,
+      type: v.discount_type,
+    })) : []
   );
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -468,8 +473,8 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
                         className="w-1/3 px-2 py-1.5 text-xs bg-white border border-zinc-200 rounded focus:outline-none uppercase"
                       />
                       <input 
-                        value={voucher.discount}
-                        onChange={e => updateVoucher(voucher.id, 'discount', parseFloat(e.target.value))}
+                        value={isNaN(voucher.discount) ? 0 : voucher.discount}
+                        onChange={e => updateVoucher(voucher.id, 'discount', parseFloat(e.target.value) || 0)}
                         type="number" 
                         min="0"
                         className="w-1/4 px-2 py-1.5 text-xs bg-white border border-zinc-200 rounded focus:outline-none"

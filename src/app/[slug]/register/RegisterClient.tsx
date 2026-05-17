@@ -588,10 +588,10 @@ export default function RegisterClient({ eventId, eventTitle, eventSlug, ticketT
                         Remove
                       </button>
                     ) : (
-                      <button 
+                      <button
                         type="button"
                         onClick={applyVoucher}
-                        className="px-4 py-2 bg-zinc-900 text-white font-semibold rounded-lg text-sm hover:bg-zinc-800"
+                        className="px-4 py-2 bg-zinc-900 text-white font-semibold rounded-lg text-sm hover:bg-zinc-800 active:scale-95 active:opacity-80 transition-all"
                       >
                         Apply
                       </button>

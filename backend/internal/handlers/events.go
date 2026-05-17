@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -213,6 +214,14 @@ type createEventRequest struct {
 		EndDate     *string  `json:"end_date"`
 		Capacity    *int     `json:"capacity"`
 	} `json:"ticket_tiers"`
+	Vouchers []struct {
+		Code       string   `json:"code"`
+		Discount   float64  `json:"discount"`
+		Type       string   `json:"type"`
+		UsageLimit *int     `json:"usage_limit"`
+		StartDate  *string  `json:"start_date"`
+		EndDate    *string  `json:"end_date"`
+	} `json:"vouchers"`
 }
 
 func slugify(s string) string {
@@ -291,6 +300,23 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
 		`, eventID, name, tier.Price, tier.Description, tier.MinQty, tier.MaxQty,
 			parseOptionalTime(tier.StartDate), parseOptionalTime(tier.EndDate), tier.Capacity)
+	}
+
+	// Insert vouchers
+	for _, v := range req.Vouchers {
+		code := strings.ToUpper(strings.TrimSpace(v.Code))
+		if code == "" {
+			continue
+		}
+		discountType := strings.ToUpper(v.Type)
+		if discountType == "" {
+			discountType = "PERCENT"
+		}
+		_, _ = db.Pool.Exec(r.Context(), `
+			INSERT INTO event_vouchers (event_id, code, discount_amount, discount_type, usage_limit, start_date, end_date, is_active)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,true)
+		`, eventID, code, v.Discount, discountType, v.UsageLimit,
+			parseOptionalTime(v.StartDate), parseOptionalTime(v.EndDate))
 	}
 
 	RespondJSON(w, http.StatusCreated, map[string]string{"id": eventID})
@@ -401,6 +427,58 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
 			`, id, name, tier.Price, tier.Description, tier.MinQty,
 				tier.MaxQty, startDate, endDate, tier.Capacity)
+		}
+	}
+
+	// Sync vouchers: load existing by code, then update/insert/delete without ON CONFLICT
+	log.Printf("[voucher-sync] incoming vouchers count: %d", len(req.Vouchers))
+	type existingVoucher struct{ id string }
+	existingByCode := map[string]existingVoucher{}
+	voucherCodeRows, _ := db.Pool.Query(r.Context(), `SELECT id, code FROM event_vouchers WHERE event_id=$1`, id)
+	if voucherCodeRows != nil {
+		for voucherCodeRows.Next() {
+			var vid, vcode string
+			_ = voucherCodeRows.Scan(&vid, &vcode)
+			existingByCode[vcode] = existingVoucher{id: vid}
+		}
+		voucherCodeRows.Close()
+	}
+	log.Printf("[voucher-sync] existing vouchers in db: %d", len(existingByCode))
+
+	incomingVoucherCodes := map[string]bool{}
+	for _, v := range req.Vouchers {
+		code := strings.ToUpper(strings.TrimSpace(v.Code))
+		if code == "" {
+			continue
+		}
+		incomingVoucherCodes[code] = true
+		discountType := strings.ToUpper(v.Type)
+		if discountType == "" {
+			discountType = "PERCENT"
+		}
+		if existing, found := existingByCode[code]; found {
+			_, err := db.Pool.Exec(r.Context(), `
+				UPDATE event_vouchers
+				SET discount_amount=$1, discount_type=$2, usage_limit=$3, start_date=$4, end_date=$5
+				WHERE id=$6
+			`, v.Discount, discountType, v.UsageLimit,
+				parseOptionalTime(v.StartDate), parseOptionalTime(v.EndDate), existing.id)
+			log.Printf("[voucher-sync] UPDATE %s err=%v", code, err)
+		} else {
+			_, err := db.Pool.Exec(r.Context(), `
+				INSERT INTO event_vouchers (event_id, code, discount_amount, discount_type, usage_limit, start_date, end_date, is_active)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,true)
+			`, id, code, v.Discount, discountType, v.UsageLimit,
+				parseOptionalTime(v.StartDate), parseOptionalTime(v.EndDate))
+			log.Printf("[voucher-sync] INSERT %s discount=%.2f type=%s err=%v", code, v.Discount, discountType, err)
+		}
+	}
+
+	// Delete vouchers no longer in the list
+	for code, existing := range existingByCode {
+		if !incomingVoucherCodes[code] {
+			_, err := db.Pool.Exec(r.Context(), `DELETE FROM event_vouchers WHERE id=$1`, existing.id)
+			log.Printf("[voucher-sync] DELETE %s err=%v", code, err)
 		}
 	}
 
