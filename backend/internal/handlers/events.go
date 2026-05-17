@@ -85,7 +85,7 @@ func ListPublicEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetEvent handles GET /api/events/{id}
-// Returns a single event with all its ticket tiers.
+// Returns a single event with all its ticket tiers and vouchers (for admin).
 func GetEvent(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -122,6 +122,24 @@ func GetEvent(w http.ResponseWriter, r *http.Request) {
 				&t.StartDate, &t.EndDate, &t.Capacity, &t.IsActive, &t.CreatedAt,
 			)
 			e.TicketTiers = append(e.TicketTiers, t)
+		}
+	}
+
+	// ✅ FIX: Fetch all vouchers for admin (no is_active filter)
+	voucherRows, _ := db.Pool.Query(r.Context(), `
+		SELECT id, event_id, code, discount_amount, discount_type, usage_limit,
+		       usage_count, start_date, end_date, is_active, created_at
+		FROM event_vouchers WHERE event_id = $1
+	`, id)
+	if voucherRows != nil {
+		defer voucherRows.Close()
+		for voucherRows.Next() {
+			var v models.EventVoucher
+			_ = voucherRows.Scan(
+				&v.ID, &v.EventID, &v.Code, &v.DiscountAmount, &v.DiscountType, &v.UsageLimit,
+				&v.UsageCount, &v.StartDate, &v.EndDate, &v.IsActive, &v.CreatedAt,
+			)
+			e.EventVouchers = append(e.EventVouchers, v)
 		}
 	}
 
@@ -189,38 +207,38 @@ func GetEventBySlug(w http.ResponseWriter, r *http.Request) {
 }
 
 type createEventRequest struct {
-	Title         string      `json:"title"`
-	Description   *string     `json:"description"`
-	Slug          string      `json:"slug"`
-	EventType     string      `json:"event_type"`
-	ParentEventID *string     `json:"parent_event_id"`
-	EventDate     string      `json:"event_date"` // RFC3339
-	EventEndDate  *string     `json:"event_end_date"`
-	Location      *string     `json:"location"`
-	MeetingURL    *string     `json:"meeting_url"`
-	CheckinWindowMinutes *int `json:"checkin_window_minutes"`
-	IsPublished   bool        `json:"is_published"`
-	ThemeColor    string      `json:"theme_color"`
-	CoverImageURL *string     `json:"cover_image_url"`
-	ContentBlocks interface{} `json:"content_blocks"`
-	TicketTiers   []struct {
-		ID          *string  `json:"id"`
-		Name        string   `json:"name"`
-		Price       float64  `json:"price"`
-		Description *string  `json:"description"`
-		MinQty      int      `json:"min_qty"`
-		MaxQty      *int     `json:"max_qty"`
-		StartDate   *string  `json:"start_date"`
-		EndDate     *string  `json:"end_date"`
-		Capacity    *int     `json:"capacity"`
+	Title                string      `json:"title"`
+	Description          *string     `json:"description"`
+	Slug                 string      `json:"slug"`
+	EventType            string      `json:"event_type"`
+	ParentEventID        *string     `json:"parent_event_id"`
+	EventDate            string      `json:"event_date"` // RFC3339
+	EventEndDate         *string     `json:"event_end_date"`
+	Location             *string     `json:"location"`
+	MeetingURL           *string     `json:"meeting_url"`
+	CheckinWindowMinutes *int        `json:"checkin_window_minutes"`
+	IsPublished          bool        `json:"is_published"`
+	ThemeColor           string      `json:"theme_color"`
+	CoverImageURL        *string     `json:"cover_image_url"`
+	ContentBlocks        interface{} `json:"content_blocks"`
+	TicketTiers          []struct {
+		ID          *string `json:"id"`
+		Name        string  `json:"name"`
+		Price       float64 `json:"price"`
+		Description *string `json:"description"`
+		MinQty      int     `json:"min_qty"`
+		MaxQty      *int    `json:"max_qty"`
+		StartDate   *string `json:"start_date"`
+		EndDate     *string `json:"end_date"`
+		Capacity    *int    `json:"capacity"`
 	} `json:"ticket_tiers"`
 	Vouchers []struct {
-		Code       string   `json:"code"`
-		Discount   float64  `json:"discount"`
-		Type       string   `json:"type"`
-		UsageLimit *int     `json:"usage_limit"`
-		StartDate  *string  `json:"start_date"`
-		EndDate    *string  `json:"end_date"`
+		Code       string  `json:"code"`
+		Discount   float64 `json:"discount"`
+		Type       string  `json:"type"`
+		UsageLimit *int    `json:"usage_limit"`
+		StartDate  *string `json:"start_date"`
+		EndDate    *string `json:"end_date"`
 	} `json:"vouchers"`
 }
 
@@ -360,9 +378,9 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Pool.Exec(r.Context(), `
-		UPDATE events SET title=$1, description=$2, slug=$3, event_type=$4, 
+		UPDATE events SET title=$1, description=$2, slug=$3, event_type=$4,
 		                 parent_event_id=$5, event_date=$6, event_end_date=$7,
-		                 location=$8, meeting_url=$9, checkin_window_minutes=$10, is_published=$11, 
+		                 location=$8, meeting_url=$9, checkin_window_minutes=$10, is_published=$11,
 		                 theme_color=$12, cover_image_url=$13, content_blocks=$14
 		WHERE id=$15
 	`,
@@ -430,7 +448,7 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Sync vouchers: load existing by code, then update/insert/delete without ON CONFLICT
+	// Sync vouchers: load existing by code, then update/insert/delete
 	log.Printf("[voucher-sync] incoming vouchers count: %d", len(req.Vouchers))
 	type existingVoucher struct{ id string }
 	existingByCode := map[string]existingVoucher{}
@@ -497,7 +515,6 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 // RegisterForEvent handles POST /api/events/register (public)
-// Calls the `register_for_event` Postgres RPC function after resolving CRM records.
 func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Order     map[string]interface{}   `json:"order"`
@@ -522,7 +539,6 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	baseRegNumber = strings.ToUpper(baseRegNumber) + "-" + time.Now().Format("0500")
 
-	// Resolve person IDs via CRM soft-match
 	for i, attendee := range body.Attendees {
 		var matchedPersonID *string
 		email, _ := attendee["email"].(string)
@@ -539,12 +555,11 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 				WHERE ($1 != '' AND email = $1) OR ($2 != '' AND whatsapp_number = $2)
 				LIMIT 1
 			`, email, whatsapp).Scan(&id)
-			
+
 			if err == nil {
 				matchedPersonID = &id
-				// Update existing person
 				_, _ = db.Pool.Exec(r.Context(), `
-					UPDATE people 
+					UPDATE people
 					SET full_name = COALESCE(NULLIF($1, ''), full_name),
 					    email = COALESCE(NULLIF($2, ''), email),
 					    whatsapp_number = COALESCE(NULLIF($3, ''), whatsapp_number),
@@ -557,7 +572,6 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if matchedPersonID == nil {
-			// Insert new person
 			var newID string
 			err := db.Pool.QueryRow(r.Context(), `
 				INSERT INTO people (full_name, email, whatsapp_number, gender, birth_date, church_title)
@@ -569,7 +583,6 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Link Ministry Roles to the person in CRM
 		if matchedPersonID != nil {
 			if rolesString, ok := attendee["ministry_role"].(string); ok && rolesString != "" {
 				roles := strings.Split(rolesString, ",")
@@ -580,7 +593,7 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 					}
 					var roleID string
 					err := db.Pool.QueryRow(r.Context(), `SELECT id FROM ministry_roles WHERE name ILIKE $1 LIMIT 1`, roleName).Scan(&roleID)
-	if err != nil {
+					if err != nil {
 						_ = db.Pool.QueryRow(r.Context(), `INSERT INTO ministry_roles (name) VALUES ($1) RETURNING id`, roleName).Scan(&roleID)
 					}
 					if roleID != "" {
@@ -593,7 +606,7 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 			}
 			body.Attendees[i]["person_id"] = *matchedPersonID
 		}
-		
+
 		body.Attendees[i]["registration_number"] = baseRegNumber
 		if rType, ok := attendee["type"].(string); ok {
 			body.Attendees[i]["registration_type"] = rType
@@ -623,14 +636,12 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseOptionalTime safely parses an optional RFC 3339 timestamp pointer.
-// Returns nil if the pointer is nil, empty, or unparseable.
 func parseOptionalTime(ts *string) *time.Time {
 	if ts == nil || *ts == "" {
 		return nil
 	}
 	t, err := time.Parse(time.RFC3339, *ts)
 	if err != nil {
-		// Also try without nanoseconds (e.g. "2006-01-02T15:04:05Z")
 		t, err = time.Parse("2006-01-02T15:04:05Z07:00", *ts)
 		if err != nil {
 			return nil
