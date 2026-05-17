@@ -661,6 +661,3 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
     </div>
   );
 }
- </div>
-  );
-}
