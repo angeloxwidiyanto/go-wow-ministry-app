@@ -77,7 +77,9 @@ export default function RegisterClient({ eventId, eventTitle, eventSlug, ticketT
   const totals = calculateTotals();
 
   const applyVoucher = () => {
+    console.log("Attempting to apply voucher:", voucherInput);
     const found = vouchers.find(v => v.code.toUpperCase() === voucherInput.toUpperCase());
+    console.log("Found voucher:", found);
     if (found) {
       setAppliedVoucher(found);
       setErrorMsg("");
