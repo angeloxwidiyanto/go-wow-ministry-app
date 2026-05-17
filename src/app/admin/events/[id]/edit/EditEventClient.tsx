@@ -506,22 +506,65 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
               </div>
             </div>
 
+            {/* Cover Image */}
             <div>
               <label className="block text-sm font-semibold text-zinc-700 mb-2">Cover Image URL (Optional)</label>
-              <input 
-                name="cover_image_url" 
-                value={coverImageUrl}
-                onChange={e => setCoverImageUrl(e.target.value)}
-                type="url" 
-                className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white outline-none transition-colors" 
-              />
-              {coverImageUrl && (
-                <div className="mt-3 rounded-xl overflow-hidden h-40 w-full max-w-sm border border-zinc-200">
-                  <img src={coverImageUrl} alt="Cover Preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
+              <input type="hidden" name="cover_image_url" value={coverImageUrl} />
 
+              <div className="flex flex-col md:flex-row gap-4 items-start">
+                {coverImageUrl ? (
+                  <div className="relative group shrink-0">
+                    <div className="rounded-xl overflow-hidden w-full md:w-64 h-36 border border-zinc-200">
+                      <img src={coverImageUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setCoverImageUrl("")}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`w-full md:w-64 h-36 border-2 border-dashed border-zinc-200 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors shrink-0 ${isUploading ? 'bg-zinc-50' : 'hover:bg-zinc-50 hover:border-primary/50'}`}
+                  >
+                    {isUploading ? (
+                      <>
+                        <span className="material-symbols-outlined text-primary text-2xl animate-spin mb-2">progress_activity</span>
+                        <p className="text-xs text-zinc-500 font-semibold">Uploading...</p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-zinc-400 text-3xl mb-2">add_photo_alternate</span>
+                        <p className="text-xs text-zinc-500 font-semibold">Click to upload image</p>
+                        <p className="text-[10px] text-zinc-400 mt-1">16:9 ratio recommended</p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex-1 w-full">
+                  <p className="text-xs text-zinc-500 mb-2">Or paste an external image URL directly:</p>
+                  <input 
+                    value={coverImageUrl}
+                    onChange={e => setCoverImageUrl(e.target.value)}
+                    type="url" 
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-white outline-none transition-colors" 
+                    placeholder="https://example.com/image.jpg" 
+                  />
+                </div>
+              </div>
+
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/png, image/jpeg, image/webp" 
+                className="hidden" 
+                onChange={handleFileChange}
+              />
+            </div>
             <div className="pt-4">
               <label className="block text-sm font-semibold text-zinc-700 mb-4">Additional Content Blocks</label>
               
