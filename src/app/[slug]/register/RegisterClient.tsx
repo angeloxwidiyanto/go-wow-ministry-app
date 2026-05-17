@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import { submitRegistrationAction } from "./actions";
 import Link from "next/link";
 
@@ -22,6 +22,10 @@ type Props = {
 };
 
 export default function RegisterClient({ eventId, eventTitle, eventSlug, ticketTiers, vouchers }: Props) {
+  useEffect(() => {
+    console.log("DEBUG: Vouchers available in RegisterClient:", vouchers);
+  }, [vouchers]);
+
   const [step, setStep] = useState(1);
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState("");
