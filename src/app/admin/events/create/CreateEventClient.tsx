@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from "react";
 import { createEventAction } from "../actions";
 import Link from "next/link";
 import ImageCropper from "@/components/ImageCropper";
+import { createClient } from "@/utils/supabase/client";
 
 const COLORS = [
   { id: "purple", label: "Purple", bg: "bg-purple-600", border: "border-purple-600" },
@@ -63,11 +64,18 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
     setCropSourceUrl(null);
     setIsUploading(true);
     try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const formData = new FormData();
-      formData.append("cover_image", croppedBlob, "cover.jpg");
+      formData.append("cover", croppedBlob, "cover.jpg");
       
       const res = await fetch("/api/upload/cover", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
         body: formData,
       });
       

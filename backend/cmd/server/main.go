@@ -18,6 +18,7 @@ import (
 	"github.com/wowministry/api/internal/db"
 	"github.com/wowministry/api/internal/handlers"
 	"github.com/wowministry/api/internal/middleware"
+	"github.com/wowministry/api/internal/upload"
 )
 
 func main() {
@@ -37,6 +38,15 @@ func main() {
 		log.Fatalf("❌ JWKS initialization failed: %v", err)
 	}
 	log.Println("✅ JWKS cache initialized")
+
+	// ── Initialize S3 Upload Handler ─────────────────────────────────────
+	uploadHandler, err := upload.InitUploadHandler()
+	if err != nil {
+		log.Printf("⚠️  S3 Upload disabled: %v", err)
+	} else {
+		handlers.SetUploadHandler(uploadHandler)
+		log.Println("✅ S3 upload handler initialized")
+	}
 
 	r := chi.NewRouter()
 

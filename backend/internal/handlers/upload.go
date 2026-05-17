@@ -39,7 +39,7 @@ func UploadCoverImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := coverUploadHandler.UploadCover(file, header.Filename, header.Header.Get("Content-Type"))
+	url, err := coverUploadHandler.UploadCover(file, header.Size, header.Filename, header.Header.Get("Content-Type"))
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, err.Error())
 		return
