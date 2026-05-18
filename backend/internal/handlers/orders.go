@@ -77,7 +77,7 @@ func PublicSearchOrders(w http.ResponseWriter, r *http.Request) {
 	searchPattern := "%" + q + "%"
 	rows, err := db.Pool.Query(r.Context(), `
 		SELECT o.id, o.pic_name, o.pic_email, o.pic_whatsapp,
-		       o.total_tickets, o.total_amount, o.status, o.created_at,
+		       o.total_tickets, o.total_amount, o.status, o.created_at::text,
 		       e.id, e.title, e.event_date::text, e.location, e.slug
 		FROM registration_orders o
 		LEFT JOIN events e ON e.id = o.event_id
@@ -403,7 +403,7 @@ func sendPaidNotification(orderID string) {
 		WHERE a.order_id = $1
 		ORDER BY a.created_at ASC
 	`, orderID)
-	
+
 	type attendeeData struct {
 		Name     string
 		Type     string
@@ -449,7 +449,7 @@ func sendPaidNotification(orderID string) {
 		if a.Whatsapp == "" {
 			continue
 		}
-		
+
 		normAttendeeWhatsapp := fonnte.NormalizePhone(a.Whatsapp)
 		if normAttendeeWhatsapp == "" || normAttendeeWhatsapp == normPicWhatsapp {
 			continue
