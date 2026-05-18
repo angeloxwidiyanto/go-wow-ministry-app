@@ -18,8 +18,12 @@ func ListMembers(w http.ResponseWriter, r *http.Request) {
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
 	var (
-		rows interface{ Next() bool; Scan(...any) error; Close() }
-		err  error
+		rows interface {
+			Next() bool
+			Scan(...any) error
+			Close()
+		}
+		err error
 	)
 
 	if search != "" {
@@ -96,8 +100,8 @@ type memberRequest struct {
 	ChurchTitle    *string `json:"church_title"`
 	Gender         *string `json:"gender"`
 	BirthDate      *string `json:"birth_date"`
-	OriginChurch   *string `json:"origin_church"`  // resolved to church_id
-	MinistryRole   *string `json:"ministry_role"`  // comma-separated, auto-created
+	OriginChurch   *string `json:"origin_church"` // resolved to church_id
+	MinistryRole   *string `json:"ministry_role"` // comma-separated, auto-created
 }
 
 // CreateMember handles POST /api/members (admin only)
@@ -189,8 +193,8 @@ func UpdateMember(w http.ResponseWriter, r *http.Request) {
 // BulkAddMembers handles POST /api/members/bulk (admin only)
 func BulkAddMembers(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Members     []memberRequest `json:"members"`
-		TargetEventID *string       `json:"target_event_id"`
+		Members       []memberRequest `json:"members"`
+		TargetEventID *string         `json:"target_event_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		RespondError(w, http.StatusBadRequest, "invalid request body")

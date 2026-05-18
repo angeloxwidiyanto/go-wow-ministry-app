@@ -1,6 +1,5 @@
 "use server";
 
-import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/utils/api";
 
@@ -13,7 +12,6 @@ type Order = {
 };
 
 export async function uploadPaymentProofAction(orderId: string, formData: FormData) {
-  const supabase = createAdminClient();
   const file = formData.get("proof") as File;
 
   if (!file || file.size === 0) {
@@ -48,43 +46,17 @@ export async function uploadPaymentProofAction(orderId: string, formData: FormDa
     return { error: "This order has been cancelled." };
   }
 
-  // Upload to Supabase Storage
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${orderId}-${Date.now()}.${fileExt}`;
-  const filePath = `payment-proofs/${fileName}`;
-
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const { error: uploadError } = await supabase.storage
-    .from("payment-proofs") // Bucket name
-    .upload(filePath, buffer, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (uploadError) {
-    console.error("Storage upload error:", uploadError);
-    return { error: "Failed to upload file. Please try again." };
-  }
-
-  // Get the public URL
-  const { data: urlData } = supabase.storage
-    .from("payment-proofs")
-    .getPublicUrl(filePath);
-
-  const publicUrl = urlData?.publicUrl;
-
-  // Update the order with proof URL via Go API
+  // Upload to Go Backend via apiFetch
   try {
-    await apiFetch(`/api/orders/${orderId}/proof`, {
+    const data = await apiFetch<{ success: boolean; url: string }>(`/api/orders/${orderId}/proof`, {
       method: "PUT",
-      body: JSON.stringify({ payment_proof_url: publicUrl }),
+      body: formData,
     });
+    
+    revalidatePath(`/invoice/${orderId}`);
+    return { success: true, url: data.url };
   } catch (err) {
-    return { error: "Failed to save payment proof. Please contact us directly." };
+    console.error("Upload payment proof error:", err);
+    return { error: "Failed to upload file. Please try again or contact us directly." };
   }
-
-  revalidatePath(`/invoice/${orderId}`);
-  return { success: true, url: publicUrl };
 }

@@ -6,7 +6,6 @@
  * so requests never leave the internal network. Falls back to localhost:8080 for local dev.
  */
 
-import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
 const API_BASE =
@@ -30,14 +29,19 @@ export async function apiFetch<T = unknown>(
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token ?? "";
 
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers ?? {}),
+  };
+
+  if (!headers["Content-Type"] && !(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers ?? {}),
-    },
+    headers,
   });
 
   if (!res.ok) {

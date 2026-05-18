@@ -75,3 +75,24 @@ func (h *UploadHandler) UploadCover(file io.Reader, size int64, filename string,
 	publicImageURL := fmt.Sprintf("%s/%s", h.publicURL, objectKey)
 	return publicImageURL, nil
 }
+
+func (h *UploadHandler) UploadPaymentProof(file io.Reader, size int64, filename string, contentType string, orderID string) (string, error) {
+	ext := filepath.Ext(filename)
+	// Use orderID in the filename for better traceability
+	objectKey := fmt.Sprintf("payment-proofs/%s-%d%s", orderID, time.Now().UnixNano(), ext)
+
+	opts := minio.PutObjectOptions{
+		ContentType: contentType,
+		UserMetadata: map[string]string{
+			"x-amz-acl": "public-read",
+		},
+	}
+
+	_, err := h.minioClient.PutObject(context.TODO(), h.bucketName, objectKey, file, size, opts)
+	if err != nil {
+		return "", fmt.Errorf("gagal mengunggah payment proof ke storage: %w", err)
+	}
+
+	publicImageURL := fmt.Sprintf("%s/%s", h.publicURL, objectKey)
+	return publicImageURL, nil
+}

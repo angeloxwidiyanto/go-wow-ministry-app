@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 
@@ -90,15 +91,15 @@ func PublicSearchOrders(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type OrderResult struct {
-		ID            string      `json:"id"`
-		PICName       string      `json:"pic_name"`
-		PICEmail      string      `json:"pic_email"`
-		PICWhatsapp   string      `json:"pic_whatsapp"`
-		TotalTickets  int         `json:"total_tickets"`
-		TotalAmount   float64     `json:"total_amount"`
-		Status        string      `json:"status"`
-		CreatedAt     string      `json:"created_at"`
-		Events        interface{} `json:"events"`
+		ID           string      `json:"id"`
+		PICName      string      `json:"pic_name"`
+		PICEmail     string      `json:"pic_email"`
+		PICWhatsapp  string      `json:"pic_whatsapp"`
+		TotalTickets int         `json:"total_tickets"`
+		TotalAmount  float64     `json:"total_amount"`
+		Status       string      `json:"status"`
+		CreatedAt    string      `json:"created_at"`
+		Events       interface{} `json:"events"`
 	}
 
 	results := []OrderResult{}
@@ -111,7 +112,7 @@ func PublicSearchOrders(w http.ResponseWriter, r *http.Request) {
 			Location  *string `json:"location"`
 			Slug      string  `json:"slug"`
 		}
-		
+
 		if err := rows.Scan(
 			&o.ID, &o.PICName, &o.PICEmail, &o.PICWhatsapp,
 			&o.TotalTickets, &o.TotalAmount, &o.Status, &o.CreatedAt,
@@ -153,14 +154,14 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch event details matching Next.js query shape
 	var event struct {
-		Title         string      `json:"title"`
-		Description   *string     `json:"description"`
-		Location      *string     `json:"location"`
-		MeetingURL    *string     `json:"meeting_url"`
-		CheckinWindowMinutes *int `json:"checkin_window_minutes"`
-		EventDate     string      `json:"event_date"`
-		CoverImageURL *string     `json:"cover_image_url"`
-		ThemeColor    string      `json:"theme_color"`
+		Title                string  `json:"title"`
+		Description          *string `json:"description"`
+		Location             *string `json:"location"`
+		MeetingURL           *string `json:"meeting_url"`
+		CheckinWindowMinutes *int    `json:"checkin_window_minutes"`
+		EventDate            string  `json:"event_date"`
+		CoverImageURL        *string `json:"cover_image_url"`
+		ThemeColor           string  `json:"theme_color"`
 	}
 	err = db.Pool.QueryRow(r.Context(), `
 		SELECT title, description, location, meeting_url, checkin_window_minutes, event_date::text, cover_image_url, theme_color
@@ -255,24 +256,67 @@ func UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 func UpdateOrderProof(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	var body struct {
-		PaymentProofURL string `json:"payment_proof_url"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.PaymentProofURL == "" {
-		RespondError(w, http.StatusBadRequest, "payment_proof_url is required")
+	if coverUploadHandler == nil {
+		RespondError(w, http.StatusInternalServerError, "S3 upload is not configured")
 		return
 	}
 
-	_, err := db.Pool.Exec(r.Context(),
+	// Limit ukuran file: 5MB
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
+
+	file, header, err := r.FormFile("proof")
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "Gagal membaca file: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	// MIME-type validation using DetectContentType
+	buffer := make([]byte, 512)
+	n, err := file.Read(buffer)
+	if err != nil && err != io.EOF {
+		RespondError(w, http.StatusInternalServerError, "Gagal membaca file untuk validasi")
+		return
+	}
+	// Reset file pointer after reading
+	if _, err := file.Seek(0, 0); err != nil {
+		RespondError(w, http.StatusInternalServerError, "Gagal reset file pointer")
+		return
+	}
+
+	contentType := http.DetectContentType(buffer[:n])
+	allowedTypes := map[string]bool{
+		"image/jpeg":      true,
+		"image/png":       true,
+		"image/webp":      true,
+		"application/pdf": true,
+	}
+
+	if !allowedTypes[contentType] {
+		RespondError(w, http.StatusBadRequest, "Format tidak didukung. Gunakan JPG, PNG, WebP, atau PDF")
+		return
+	}
+
+	// Upload ke S3
+	url, err := coverUploadHandler.UploadPaymentProof(file, header.Size, header.Filename, contentType, id)
+	if err != nil {
+		RespondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	_, err = db.Pool.Exec(r.Context(),
 		`UPDATE registration_orders SET payment_proof_url=$1, status='PENDING' WHERE id=$2`,
-		body.PaymentProofURL, id,
+		url, id,
 	)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	RespondJSON(w, http.StatusOK, map[string]bool{"success": true})
+	RespondJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"url":     url,
+	})
 }
 
 // BulkUpdateOrderStatus handles PUT /api/orders/bulk-status (admin only)

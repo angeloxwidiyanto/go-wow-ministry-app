@@ -86,15 +86,15 @@ func ListPendingContacts(w http.ResponseWriter, r *http.Request) {
 
 type createPersonFromAttendeeRequest struct {
 	// Attendee-sourced fields
-	ID              string  `json:"id"`               // attendee ID
-	AttendeeName    string  `json:"attendee_name"`
-	AttendeeEmail   *string `json:"attendee_email"`
+	ID               string  `json:"id"` // attendee ID
+	AttendeeName     string  `json:"attendee_name"`
+	AttendeeEmail    *string `json:"attendee_email"`
 	AttendeeWhatsapp *string `json:"attendee_whatsapp"`
-	ChurchTitle     *string `json:"church_title"`
-	Gender          *string `json:"gender"`
-	BirthDate       *string `json:"birth_date"`
-	OriginChurch    *string `json:"origin_church"`
-	MinistryRole    *string `json:"ministry_role"`
+	ChurchTitle      *string `json:"church_title"`
+	Gender           *string `json:"gender"`
+	BirthDate        *string `json:"birth_date"`
+	OriginChurch     *string `json:"origin_church"`
+	MinistryRole     *string `json:"ministry_role"`
 }
 
 // CreatePersonFromAttendee handles POST /api/pending-contacts/create-person (admin only)
