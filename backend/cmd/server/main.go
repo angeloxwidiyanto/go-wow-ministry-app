@@ -93,6 +93,9 @@ func main() {
 		// Public ticket search by email/whatsapp
 		r.Get("/api/orders/search", handlers.PublicSearchOrders)
 
+		// Invoice detail (public - anyone with link UUID can view)
+		r.Get("/api/orders/{id}", handlers.GetOrder)
+
 		// Fonnte webhook (Fonnte calls this, no auth)
 		r.Get("/api/fonnte/webhook", handlers.FonnteWebhookGet)
 		r.Post("/api/fonnte/webhook", handlers.FonnteWebhook)
@@ -111,7 +114,6 @@ func main() {
 
 		// Orders
 		r.Get("/api/orders", handlers.ListOrders)
-		r.Get("/api/orders/{id}", handlers.GetOrder)
 		r.Put("/api/orders/{id}/status", handlers.UpdateOrderStatus)
 		r.Put("/api/orders/bulk-status", handlers.BulkUpdateOrderStatus)
 
