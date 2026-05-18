@@ -32,6 +32,7 @@ type Order = {
     registration_number: string;
     registration_type: string;
     origin_church: string | null;
+    ticket_price: number;
   }[];
 };
 
@@ -221,8 +222,8 @@ export default function InvoiceClient({ order }: { order: Order }) {
                   </div>
                   <div className="mt-3 sm:mt-0 text-right sm:text-right flex flex-col items-end gap-3">
                     <div>
-                      <p className="text-xs text-zinc-500 mb-1">{attendee.registration_type} Ticket</p>
-                      <p className="font-semibold text-zinc-900">Rp {ticketPrice ? ticketPrice.toLocaleString() : "0"}</p>
+                      <p className="text-xs text-zinc-500 mb-1">{order.events.title}</p>
+                      <p className="font-semibold text-zinc-900">{attendee.registration_type} — Rp {attendee.ticket_price ? attendee.ticket_price.toLocaleString() : "0"}</p>
                     </div>
                     {isPaid && (
                       <div className="mt-2 bg-white p-2 rounded-xl border border-zinc-200 shadow-sm print:shadow-none print:border-none">

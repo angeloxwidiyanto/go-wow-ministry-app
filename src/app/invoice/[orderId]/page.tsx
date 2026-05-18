@@ -32,6 +32,7 @@ type Order = {
     registration_number: string;
     registration_type: string;
     origin_church: string | null;
+    ticket_price: number;
   }[];
 };
 

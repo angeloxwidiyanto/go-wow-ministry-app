@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -181,11 +182,14 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 		RegistrationNumber string  `json:"registration_number"`
 		RegistrationType   string  `json:"registration_type"`
 		OriginChurch       *string `json:"origin_church"`
+		TicketPrice        float64 `json:"ticket_price"`
 	}{}
 	rows, err := db.Pool.Query(r.Context(), `
-		SELECT id, attendee_name, registration_number, registration_type, origin_church
-		FROM event_attendees
-		WHERE order_id = $1
+		SELECT a.id, a.attendee_name, a.registration_number, a.registration_type, a.origin_church,
+		       COALESCE(t.price, 0) as ticket_price
+		FROM event_attendees a
+		LEFT JOIN ticket_tiers t ON t.id = a.ticket_tier_id
+		WHERE a.order_id = $1
 	`, o.ID)
 	if err != nil {
 		RespondError(w, http.StatusInternalServerError, err.Error())
@@ -200,8 +204,9 @@ func GetOrder(w http.ResponseWriter, r *http.Request) {
 			RegistrationNumber string  `json:"registration_number"`
 			RegistrationType   string  `json:"registration_type"`
 			OriginChurch       *string `json:"origin_church"`
+			TicketPrice        float64 `json:"ticket_price"`
 		}
-		if err := rows.Scan(&a.ID, &a.AttendeeName, &a.RegistrationNumber, &a.RegistrationType, &a.OriginChurch); err != nil {
+		if err := rows.Scan(&a.ID, &a.AttendeeName, &a.RegistrationNumber, &a.RegistrationType, &a.OriginChurch, &a.TicketPrice); err != nil {
 			RespondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -351,6 +356,18 @@ func BulkUpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	RespondJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
+func formatRupiah(amount float64) string {
+	s := fmt.Sprintf("%.0f", amount)
+	var result string
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result += "."
+		}
+		result += string(c)
+	}
+	return result
+}
+
 // sendPaidNotification fetches order details and sends a WhatsApp confirmation.
 // Always runs in a goroutine so it never blocks the HTTP response.
 func sendPaidNotification(orderID string) {
@@ -366,15 +383,39 @@ func sendPaidNotification(orderID string) {
 	}
 
 	var picWhatsapp, picName, eventTitle string
+	var totalAmount float64
 	_ = db.Pool.QueryRow(ctx, `
-		SELECT o.pic_whatsapp, o.pic_name, COALESCE(e.title, 'event')
+		SELECT o.pic_whatsapp, o.pic_name, COALESCE(e.title, 'event'), o.total_amount
 		FROM registration_orders o
 		LEFT JOIN events e ON e.id = o.event_id
 		WHERE o.id = $1
-	`, orderID).Scan(&picWhatsapp, &picName, &eventTitle)
+	`, orderID).Scan(&picWhatsapp, &picName, &eventTitle, &totalAmount)
 
 	if picWhatsapp == "" {
 		return
+	}
+
+	// Fetch attendee details for group/individual breakdown
+	rows, err := db.Pool.Query(ctx, `
+		SELECT a.attendee_name, a.registration_type, COALESCE(t.price, 0)
+		FROM event_attendees a
+		LEFT JOIN ticket_tiers t ON t.id = a.ticket_tier_id
+		WHERE a.order_id = $1
+		ORDER BY a.created_at ASC
+	`, orderID)
+	
+	var attendeesStr string
+	if err == nil {
+		defer rows.Close()
+		idx := 1
+		for rows.Next() {
+			var name, regType string
+			var price float64
+			if err := rows.Scan(&name, &regType, &price); err == nil {
+				attendeesStr += fmt.Sprintf("%d. %s – %s (Rp %s)\n", idx, name, regType, formatRupiah(price))
+				idx++
+			}
+		}
 	}
 
 	appURL := os.Getenv("APP_URL")
@@ -382,11 +423,13 @@ func sendPaidNotification(orderID string) {
 		appURL = "https://wowministry.id"
 	}
 
-	message := "Halo " + picName + "! 🎉\n\n" +
-		"Pembayaran kamu untuk *" + eventTitle + "* sudah kami konfirmasi!\n\n" +
-		"Tiket kamu sekarang sudah aktif. Kamu bisa cek tiket kamu di sini:\n" +
-		appURL + "/my-ticket\n\n" +
-		"Sampai jumpa di acara! 🙏"
+	message := fmt.Sprintf("Halo %s! 🎉\n\n"+
+		"Pembayaran kamu untuk *%s* sudah kami konfirmasi!\n\n"+
+		"📋 *Detail Peserta:*\n%s\n"+
+		"💰 *Total Dibayar:* Rp %s\n\n"+
+		"🎟️ Tiket kamu sudah aktif. Cek di sini:\n%s\n\n"+
+		"Sampai jumpa di acara! 🙏",
+		picName, eventTitle, attendeesStr, formatRupiah(totalAmount), appURL+"/my-ticket")
 
 	fonnte.SendWhatsApp(token, picWhatsapp, message)
 }
