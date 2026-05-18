@@ -397,22 +397,30 @@ func sendPaidNotification(orderID string) {
 
 	// Fetch attendee details for group/individual breakdown
 	rows, err := db.Pool.Query(ctx, `
-		SELECT a.attendee_name, a.registration_type, COALESCE(t.price, 0)
+		SELECT a.attendee_name, a.registration_type, COALESCE(t.price, 0), COALESCE(a.attendee_whatsapp, '')
 		FROM event_attendees a
 		LEFT JOIN ticket_tiers t ON t.id = a.ticket_tier_id
 		WHERE a.order_id = $1
 		ORDER BY a.created_at ASC
 	`, orderID)
 	
+	type attendeeData struct {
+		Name     string
+		Type     string
+		Price    float64
+		Whatsapp string
+	}
+	var attendees []attendeeData
 	var attendeesStr string
+
 	if err == nil {
 		defer rows.Close()
 		idx := 1
 		for rows.Next() {
-			var name, regType string
-			var price float64
-			if err := rows.Scan(&name, &regType, &price); err == nil {
-				attendeesStr += fmt.Sprintf("%d. %s – %s (Rp %s)\n", idx, name, regType, formatRupiah(price))
+			var a attendeeData
+			if err := rows.Scan(&a.Name, &a.Type, &a.Price, &a.Whatsapp); err == nil {
+				attendeesStr += fmt.Sprintf("%d. %s – %s (Rp %s)\n", idx, a.Name, a.Type, formatRupiah(a.Price))
+				attendees = append(attendees, a)
 				idx++
 			}
 		}
@@ -422,14 +430,38 @@ func sendPaidNotification(orderID string) {
 	if appURL == "" {
 		appURL = "https://wowministry.id"
 	}
+	ticketLink := fmt.Sprintf("%s/invoice/%s", appURL, orderID)
 
-	message := fmt.Sprintf("Halo %s! 🎉\n\n"+
+	// PESAN 1: Rekap ke PIC
+	messagePIC := fmt.Sprintf("Halo %s! 🎉\n\n"+
 		"Pembayaran kamu untuk *%s* sudah kami konfirmasi!\n\n"+
 		"📋 *Detail Peserta:*\n%s\n"+
 		"💰 *Total Dibayar:* Rp %s\n\n"+
-		"🎟️ Tiket kamu sudah aktif. Cek di sini:\n%s\n\n"+
+		"🎟️ Tiket sudah aktif. Cek di sini:\n%s\n\n"+
 		"Sampai jumpa di acara! 🙏",
-		picName, eventTitle, attendeesStr, formatRupiah(totalAmount), appURL+"/my-ticket")
+		picName, eventTitle, attendeesStr, formatRupiah(totalAmount), ticketLink)
 
-	fonnte.SendWhatsApp(token, picWhatsapp, message)
+	fonnte.SendWhatsApp(token, picWhatsapp, messagePIC)
+
+	// PESAN 2: Notifikasi Individual ke Setiap Attendee
+	normPicWhatsapp := fonnte.NormalizePhone(picWhatsapp)
+	for _, a := range attendees {
+		if a.Whatsapp == "" {
+			continue
+		}
+		
+		normAttendeeWhatsapp := fonnte.NormalizePhone(a.Whatsapp)
+		if normAttendeeWhatsapp == "" || normAttendeeWhatsapp == normPicWhatsapp {
+			continue
+		}
+
+		messageIndividual := fmt.Sprintf("Halo %s! 🎉\n\n"+
+			"Kamu telah didaftarkan oleh %s untuk mengikuti *%s*.\n\n"+
+			"🎟️ Tiket kamu:\n%s — Rp %s\n\n"+
+			"Cek e-ticket kamu di sini:\n%s\n\n"+
+			"Sampai jumpa di acara! 🙏",
+			a.Name, picName, eventTitle, a.Type, formatRupiah(a.Price), ticketLink)
+
+		fonnte.SendWhatsApp(token, normAttendeeWhatsapp, messageIndividual)
+	}
 }

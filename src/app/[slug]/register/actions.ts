@@ -7,6 +7,7 @@ import { apiFetch } from "@/utils/api";
 export async function submitRegistrationAction(
   eventId: string,
   eventSlug: string,
+  eventTitle: string,
   picData: { name: string; email: string; whatsapp: string },
   attendees: any[],
   pricingData: { totalAmount: number; discountAmount: number; appliedVoucher: string | null; paymentMethod?: string | null }
@@ -48,12 +49,22 @@ export async function submitRegistrationAction(
       const fonnteToken = await getFonnteToken();
       if (fonnteToken && picData.whatsapp) {
         const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://wowministry.id"}/invoice/${orderId}`;
+        
+        let attendeesStr = "";
+        attendees.forEach((a, idx) => {
+          const priceFormatted = new Intl.NumberFormat("id-ID").format(a.price || 0);
+          attendeesStr += `${idx + 1}. ${a.name} – ${a.type} (Rp ${priceFormatted})\n`;
+        });
+        const totalFormatted = new Intl.NumberFormat("id-ID").format(pricingData.totalAmount || 0);
+
         const message =
           `Halo ${picData.name}! 👋\n\n` +
-          `Pendaftaran kamu berhasil! 🎉\n\n` +
-          `Silakan selesaikan pembayaran dan upload bukti transfer melalui link invoice di bawah ini:\n` +
+          `Pendaftaran kamu untuk *${eventTitle}* berhasil! 🎉\n\n` +
+          `📋 *Detail Peserta:*\n${attendeesStr}\n` +
+          `💰 *Total Tagihan:* Rp ${totalFormatted}\n\n` +
+          `Silakan selesaikan pembayaran melalui link invoice:\n` +
           `${invoiceUrl}\n\n` +
-          `Jika ada pertanyaan, jangan ragu untuk menghubungi kami. Terima kasih! 🙏`;
+          `Jika ada pertanyaan, jangan ragu hubungi kami. Terima kasih! 🙏`;
 
         await sendWhatsApp(fonnteToken, picData.whatsapp, message);
       }

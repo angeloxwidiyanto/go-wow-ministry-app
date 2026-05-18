@@ -137,12 +137,14 @@ export default function RegisterClient({ eventId, eventTitle, eventSlug, ticketT
       const attendeesWithTiers = attendees.map(a => ({
         ...a,
         ticket_tier_id: activeTier.id,
-        type: activeTier.name
+        type: activeTier.name,
+        price: activeTier.price
       }));
 
       const result = await submitRegistrationAction(
         eventId,
         eventSlug,
+        eventTitle,
         { name: picName, email: picEmail, whatsapp: picWhatsapp },
         attendeesWithTiers,
         {

@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
@@ -533,11 +535,11 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 		eventSlug = "EVNT"
 	}
 
-	baseRegNumber := eventSlug
-	if len(baseRegNumber) > 4 {
-		baseRegNumber = baseRegNumber[:4]
+	prefix := eventSlug
+	if len(prefix) > 4 {
+		prefix = prefix[:4]
 	}
-	baseRegNumber = strings.ToUpper(baseRegNumber) + "-" + time.Now().Format("0500")
+	prefix = strings.ToUpper(prefix)
 
 	for i, attendee := range body.Attendees {
 		var matchedPersonID *string
@@ -607,7 +609,7 @@ func RegisterForEvent(w http.ResponseWriter, r *http.Request) {
 			body.Attendees[i]["person_id"] = *matchedPersonID
 		}
 
-		body.Attendees[i]["registration_number"] = baseRegNumber
+		body.Attendees[i]["registration_number"] = fmt.Sprintf("%s-%d%04d", prefix, time.Now().UnixNano()/1e6, rand.Intn(10000))
 		if rType, ok := attendee["type"].(string); ok {
 			body.Attendees[i]["registration_type"] = rType
 		} else {
