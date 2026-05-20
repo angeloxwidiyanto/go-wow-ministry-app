@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
