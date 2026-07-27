@@ -398,25 +398,33 @@ export default function CreateEventClient({ parentEvents = [] }: { parentEvents?
                         className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-600 mb-1">Min Qty</label>
+                        <label className="block text-xs font-semibold text-zinc-600 mb-1">
+                          Min Qty (Bulk / Rombongan)
+                        </label>
                         <input 
                           value={tier.min_qty}
                           onChange={e => updateTicketTier(tier.id, 'min_qty', parseInt(e.target.value) || 1)}
                           type="number" 
                           min="1"
+                          placeholder="1 for single"
                           className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
+                        {tier.min_qty > 1 && (
+                          <span className="inline-block mt-1 text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+                            Paket Bulk ({tier.min_qty}+ Tiket)
+                          </span>
+                        )}
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-600 mb-1">Max Qty</label>
+                        <label className="block text-xs font-semibold text-zinc-600 mb-1">Capacity (Max Kuota)</label>
                         <input 
-                          value={tier.max_qty || ''}
-                          onChange={e => updateTicketTier(tier.id, 'max_qty', e.target.value ? parseInt(e.target.value) : null)}
+                          value={tier.capacity || ''}
+                          onChange={e => updateTicketTier(tier.id, 'capacity', e.target.value ? parseInt(e.target.value) : null)}
                           type="number" 
                           min="1"
-                          placeholder="No limit"
+                          placeholder="Leave blank for unlimited"
                           className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
