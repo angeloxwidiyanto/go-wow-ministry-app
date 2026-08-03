@@ -219,26 +219,42 @@ export default async function EventLandingPage({ params }: { params: Promise<{ s
             <section className="scroll-mt-32" id="tickets">
               <h2 className="text-4xl font-headline font-bold text-zinc-900 mb-8 text-center border-b pb-6">Ticket Packages</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {event.ticket_tiers.map((tier: any) => (
-                  <div key={tier.id} className="relative p-8 border border-zinc-200 rounded-3xl bg-white hover:border-primary/50 hover:shadow-[0_20px_40px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group overflow-hidden">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-zinc-50 rounded-bl-full -z-10 group-hover:bg-primary/5 group-hover:scale-125 transition-all duration-500"></div>
-                    <div>
-                      <h4 className="text-2xl font-bold text-zinc-900">{tier.name}</h4>
-                      {tier.description && (
-                         <p className="text-zinc-500 mt-2 mb-6 leading-relaxed bg-white/80">{tier.description}</p>
-                      )}
-                      <div className="text-4xl font-headline font-black text-primary mt-4 tracking-tight">
-                        {tier.price === 0 ? "Free" : `Rp ${tier.price.toLocaleString('id-ID')}`}
+                {event.ticket_tiers.map((tier: any) => {
+                  const now = new Date();
+                  const isNotStarted = tier.start_date && new Date(tier.start_date) > now;
+                  const isExpired = tier.end_date && new Date(tier.end_date) < now;
+
+                  return (
+                    <div key={tier.id} className={`relative p-8 border rounded-3xl bg-white transition-all duration-300 flex flex-col justify-between group overflow-hidden ${isExpired || isNotStarted ? 'border-zinc-200 opacity-75' : 'border-zinc-200 hover:border-primary/50 hover:shadow-[0_20px_40px_rgb(0,0,0,0.06)] hover:-translate-y-1'}`}>
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-zinc-50 rounded-bl-full -z-10 group-hover:bg-primary/5 group-hover:scale-125 transition-all duration-500"></div>
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="text-2xl font-bold text-zinc-900">{tier.name}</h4>
+                          {isExpired && <span className="px-2.5 py-1 text-xs font-bold bg-red-100 text-red-700 rounded-full">Expired</span>}
+                          {isNotStarted && <span className="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-700 rounded-full">Belum Mulai</span>}
+                        </div>
+                        {tier.description && (
+                          <p className="text-zinc-500 mt-2 mb-6 leading-relaxed bg-white/80">{tier.description}</p>
+                        )}
+                        <div className="text-4xl font-headline font-black text-primary mt-4 tracking-tight">
+                          {tier.price === 0 ? "Free" : `Rp ${tier.price.toLocaleString('id-ID')}`}
+                        </div>
+                      </div>
+                      <div className="mt-8 pt-6 border-t border-zinc-100 text-sm text-zinc-600 font-medium space-y-3 bg-white/80">
+                         {tier.min_qty > 1 && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-emerald-500 text-xl">group</span> Minimum {tier.min_qty} tickets required</p>}
+                         {tier.max_qty && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-xl">person_off</span> Maximum {tier.max_qty} tickets allowed</p>}
+                         {tier.capacity && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-amber-500 text-xl">hourglass_empty</span> Strictly limited slots</p>}
+                         {tier.end_date && !isExpired && (
+                           <p className="flex items-center gap-2 text-purple-700 font-semibold">
+                             <span className="material-symbols-outlined text-purple-600 text-xl">schedule</span>
+                             Berlaku s/d {new Date(tier.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                           </p>
+                         )}
+                         {(!tier.min_qty || tier.min_qty <= 1) && !tier.max_qty && !tier.capacity && !tier.end_date && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span> Tickets Available</p>}
                       </div>
                     </div>
-                    <div className="mt-8 pt-6 border-t border-zinc-100 text-sm text-zinc-600 font-medium space-y-3 bg-white/80">
-                       {tier.min_qty > 1 && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-emerald-500 text-xl">group</span> Minimum {tier.min_qty} tickets required</p>}
-                       {tier.max_qty && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-xl">person_off</span> Maximum {tier.max_qty} tickets allowed</p>}
-                       {tier.capacity && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-amber-500 text-xl">hourglass_empty</span> Strictly limited slots</p>}
-                       {(!tier.min_qty || tier.min_qty <= 1) && !tier.max_qty && !tier.capacity && <p className="flex items-center gap-2"><span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span> Tickets Available</p>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )

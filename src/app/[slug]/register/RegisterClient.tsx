@@ -11,6 +11,8 @@ type TicketTier = {
   min_qty: number;
   max_qty: number | null;
   description: string;
+  start_date?: string | null;
+  end_date?: string | null;
 };
 
 type Props = {
@@ -52,8 +54,18 @@ export default function RegisterClient({ eventId, eventTitle, eventSlug, ticketT
       return { id: null, name: "General", price: 0 };
     }
     const count = attendees.length;
+    const now = new Date();
+
+    // Filter out tiers that haven't started or have expired
+    const validTiers = ticketTiers.filter(tier => {
+      if (tier.start_date && new Date(tier.start_date) > now) return false;
+      if (tier.end_date && new Date(tier.end_date) < now) return false;
+      return true;
+    });
+
+    const poolToUse = validTiers.length > 0 ? validTiers : ticketTiers;
     // Sort tiers by min_qty descending to pick the highest eligible tier (e.g., group tier)
-    const sortedTiers = [...ticketTiers].sort((a, b) => b.min_qty - a.min_qty);
+    const sortedTiers = [...poolToUse].sort((a, b) => b.min_qty - a.min_qty);
     for (const tier of sortedTiers) {
       if (count >= tier.min_qty && (!tier.max_qty || count <= tier.max_qty)) {
         return tier;
@@ -333,11 +345,24 @@ export default function RegisterClient({ eventId, eventTitle, eventSlug, ticketT
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
               {ticketTiers.map(tier => {
                 const isActive = activeTier?.id === tier.id;
+                const now = new Date();
+                const isNotStarted = tier.start_date && new Date(tier.start_date) > now;
+                const isExpired = tier.end_date && new Date(tier.end_date) < now;
+
                 return (
-                  <div key={tier.id} className={`p-4 rounded-xl border-2 transition-all ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-zinc-200 bg-white opacity-70'}`}>
-                    <h3 className={`font-headline text-sm ${isActive ? 'text-primary font-bold' : 'text-zinc-700'}`}>{tier.name}</h3>
+                  <div key={tier.id} className={`p-4 rounded-xl border-2 transition-all relative ${isExpired || isNotStarted ? 'border-zinc-200 bg-zinc-100/60 opacity-60' : isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-zinc-200 bg-white opacity-70'}`}>
+                    <div className="flex items-center justify-between gap-1">
+                      <h3 className={`font-headline text-sm ${isActive && !isExpired && !isNotStarted ? 'text-primary font-bold' : 'text-zinc-700'}`}>{tier.name}</h3>
+                      {isExpired && <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Expired</span>}
+                      {isNotStarted && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Belum Mulai</span>}
+                    </div>
                     <p className="text-lg font-bold text-zinc-900 my-1">{formatIDR(tier.price)}</p>
                     <p className="text-xs text-zinc-500 line-clamp-2">{tier.description || 'Valid per person'}</p>
+                    {tier.end_date && !isExpired && (
+                      <p className="text-[10px] font-medium text-purple-700 mt-2 bg-purple-50 px-1.5 py-0.5 rounded inline-block">
+                        Berlaku s/d {new Date(tier.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
                   </div>
                 );
               })}

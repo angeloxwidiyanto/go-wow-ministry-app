@@ -432,21 +432,25 @@ export default function EditEventClient({ event, parentEvents = [] }: { event: a
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-600 mb-1">Start Date</label>
+                        <label className="block text-xs font-semibold text-zinc-600 mb-1">
+                          Start Date <span className="font-normal text-zinc-400">(Mulai Berlaku)</span>
+                        </label>
                         <input 
                           value={formatWIBDatetimeLocal(tier.start_date)}
                           onChange={e => updateTicketTier(tier.id, 'start_date', e.target.value || null)}
                           type="datetime-local" 
-                          className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-zinc-700"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-zinc-600 mb-1">End Date</label>
+                        <label className="block text-xs font-semibold text-zinc-600 mb-1">
+                          End Date <span className="font-normal text-zinc-400">(Batas Waktu / Expiry)</span>
+                        </label>
                         <input 
                           value={formatWIBDatetimeLocal(tier.end_date)}
                           onChange={e => updateTicketTier(tier.id, 'end_date', e.target.value || null)}
                           type="datetime-local" 
-                          className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          className="w-full px-3 py-2 text-sm bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-zinc-700"
                         />
                       </div>
                     </div>
